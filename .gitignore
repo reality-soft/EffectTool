@@ -246,3 +246,4 @@ ModelManifest.xml
 *.vcxproj
 *.filters
 *.sln
+/EffectTool/imgui.ini
