@@ -35,7 +35,8 @@ project "EffectTool"
 		"../SDK/DirectXTK/include",
 		"../SDK/FBXSDK/include",
 		"../SDK/FMOD/include",
-		"../SDK/IMGUI/include"
+		"../SDK/IMGUI/include",
+		"../SDK/RP3D/include"
 	}
 
 	libdirs
@@ -44,7 +45,8 @@ project "EffectTool"
 		"../SDK/DirectXTK/lib",
 		"../SDK/FBXSDK/lib/debug",
 		"../SDK/FMOD/lib/debug",
-		"../SDK/IMGUI/lib"
+		"../SDK/IMGUI/lib",
+		"../SDK/RP3D/lib/debug"
 	}
 
 	links
@@ -55,7 +57,8 @@ project "EffectTool"
 		"zlib-md",
 		"fmod_vc",
 		"fmodL_vc",
-		"ImGui_Win32_Dx11_D"
+		"ImGui_Win32_Dx11_D",
+		"reactphysics3d"
 	}
 
 	filter "system:windows"

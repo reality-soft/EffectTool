@@ -2,9 +2,9 @@
 
 int WINAPI wWinMain(HINSTANCE hinstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow)
 {
-	ENGINE->OnInit(hinstance, L"EffectTool", { 800, 600 });
+	ENGINE->OnInit(hinstance, L"EffectTool", { 1600, 900 });
 
-	EffectTool tool;
+	KGCA41B::EffectTool tool;
 
 	ENGINE->Run(&tool);
 
