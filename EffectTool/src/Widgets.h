@@ -30,26 +30,19 @@ namespace KGCA41B
 		void	SelectTexture(string& id);
 
 	private:
-		void SaveUVSprite(UVSpriteData& data);
-		void SaveTexSprite(TexSpriteData& data);
+		void SaveUVSprite(string name);
+		void SaveTexSprite(string name);
 		void SaveParticles();
 
 	private:
-		string loading_data_id_;
-		E_Effect type_;// = NONE;
-		UVSpriteData uv_sprite_data;
-		TexSpriteData tex_sprite_data;
+		string			loading_data_id_;
+		E_Effect		type_;
+	private:
+		UVSprite		uv_sprite_data;
+		TextureSprite	tex_sprite_data;
+		Emitter			emitter_data;
 	public:
-		void set_loading_data_id(string loading_data_id) { loading_data_id_ = loading_data_id; }
-		void LoadingEffectData();
-	};
-
-	class WG_DataViewer : public KGCA41B::GuiWidget
-	{
-		virtual void Update() override;
-		virtual void Render() override;
-	public:
-		string	data_id_;
+		void LoadingSpriteData();
 	};
 }
 

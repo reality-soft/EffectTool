@@ -6,16 +6,14 @@ using namespace KGCA41B;
 
 void EffectTool::OnInit()
 {
-	GUI->AddWidget("MainMenu", &window_);
+	GUI->AddWidget("MainMenu", &tool_window_);
 	DATA->Init("D:/Data");
 	RESOURCE->Init("D:/Contents"); 
 	DINPUT->Init(ENGINE->GetWindowHandle(), ENGINE->GetInstanceHandle());
 
 	RENDER_TARGET->Init("BackBuffer");
-	widget_scene_.OnInit();
 
 	SCENE->PushScene("EffectTool", this);
-	SCENE->PushScene("Widget", &widget_scene_);
 
 	debug_camera_.position = { 0, 0, -10, 0 };
 	debug_camera_.look = { 0, 0, 1, 0 };
@@ -39,8 +37,7 @@ void EffectTool::OnInit()
 	sys_input_.OnCreate(reg_effect_tool_);
 	sys_render_.OnCreate(reg_effect_tool_);
 
-	uv_sprite_.OnInit(reg_effect_tool_, AABB<3>(), {});
-	tex_sprite_.OnInit(reg_effect_tool_, AABB<3>(), {});
+	stage_.OnInit(reg_effect_tool_, {});
 }
 
 void EffectTool::OnUpdate()
@@ -48,16 +45,13 @@ void EffectTool::OnUpdate()
 	sys_input_.OnUpdate(reg_effect_tool_);
 	sys_camera_.OnUpdate(reg_effect_tool_);
 
-	widget_scene_.OnUpdate();
-	uv_sprite_.OnUpdate(reg_effect_tool_);
-	tex_sprite_.OnUpdate(reg_effect_tool_);
+	stage_.OnUpdate(reg_effect_tool_);
 }
 
 void EffectTool::OnRender()
 {
-	widget_scene_.OnRender();
-	GUI->RenderWidgets();
 	sys_render_.OnUpdate(reg_effect_tool_);
+	GUI->RenderWidgets();
 }
 
 void EffectTool::OnRelease()

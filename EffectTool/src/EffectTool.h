@@ -2,8 +2,7 @@
 #include "Engine_include.h"
 #include "Widgets.h"
 #include "EffectWidgetScene.h"
-#include "FX_UVSprite.h"
-#include "FX_TexSprite.h"
+#include "StageActor.h"
 
 namespace KGCA41B
 {
@@ -26,11 +25,9 @@ namespace KGCA41B
 		Camera				debug_camera_;
 		InputMapping		debug_input_;
 	public:
-		EffectWidgetScene	widget_scene_;
+		WG_MainMenu			tool_window_;
+
 	public:
-		WG_MainMenu			window_;
-	public:
-		FX_UVSprite			uv_sprite_;
-		FX_TexSprite		tex_sprite_;
+		StageActor			stage_;
 	};
 }

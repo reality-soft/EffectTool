@@ -61,6 +61,21 @@ project "EffectTool"
 		"reactphysics3d"
 	}
 
+	filter "files:**VS.hlsl"
+		shadertype "Vertex"
+		shaderentry "VS"
+	    shadermodel "5.0"
+
+	filter "files:**PS.hlsl"
+	    shadertype "Pixel"
+		shaderentry "PS"
+	    shadermodel "5.0"
+		
+	filter "files:**GS.hlsl"
+	    shadertype "Geometry"
+		shaderentry "GS"
+	    shadermodel "5.0"
+
 	filter "system:windows"
 		cppdialect "C++17"
 		staticruntime "off"
@@ -79,7 +94,8 @@ project "EffectTool"
 
 		postbuildcommands
 		{
-			"copy \"..\\..\\output\\bin\\Debug-windows-x86_64\\EffectTool\\*.cso\" \"..\\..\\Contents\\Shader\\*.cso\""
+			"copy \"..\\..\\output\\bin\\Debug-windows-x86_64\\EffectTool\\*.cso\" \"..\\..\\Contents\\Shader\\*.cso\"",
+			"copy \"..\\..\\output\\bin\\Release-windows-x86_64\\EffectTool\\*.cso\" \"..\\..\\Contents\\Shader\\*.cso\""
 		}
 
 	filter "configurations:Debug"

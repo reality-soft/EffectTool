@@ -41,25 +41,25 @@ void WG_EffectWindow::Update()
 
 void WG_EffectWindow::Render()
 {
-	ImGui::SetNextWindowSize(ImVec2(600, 600));
+	ImGui::SetNextWindowSize(ImVec2(400, 600));
 	ImGui::Begin("Effect Tool", &open_, ImGuiWindowFlags_MenuBar);
 	{
 		ImGui::BeginMenuBar();
 		{
 			if(loading_data_id_.size() != 0)
-				LoadingEffectData();
+				LoadingSpriteData();
 
 			if (ImGui::BeginMenu("New Effect"))
 			{
-				if (ImGui::MenuItem("UV Changing Sprite Effect"))
+				if (ImGui::MenuItem("UV Sprite"))
 				{
 					type_ = UV_SPRITE;
 				}
-				if (ImGui::MenuItem("Texture Changing Sprite Effect"))
+				if (ImGui::MenuItem("Texture Sprite"))
 				{
 					type_ = TEX_SPRITE;
 				}
-				if (ImGui::MenuItem("Particles Effect"))
+				if (ImGui::MenuItem("Particles"))
 				{
 					type_ = PARTICLES;
 				}
@@ -96,7 +96,7 @@ void WG_EffectWindow::Render()
 	ImGui::End();
 }
 
-void KGCA41B::WG_EffectWindow::FileBrowser()
+void WG_EffectWindow::FileBrowser()
 {
 	static ImGui::FileBrowser fileDialog;
 
@@ -119,99 +119,83 @@ void KGCA41B::WG_EffectWindow::FileBrowser()
 
 	if (fileDialog.HasSelected())
 	{
-		auto tool_window = dynamic_cast<WG_EffectWindow*>(GUI->FindWidget("EffectTool"));
-		tool_window->set_loading_data_id(fileDialog.GetSelected().string());
+		loading_data_id_ = fileDialog.GetSelected().string();
 		fileDialog.ClearSelected();
-
 		fileDialog.Close();
 	}
-
-	
 }
 
 void WG_EffectWindow::UVSpriteBoard()
 {
+	static string texture_id = "";
+	static Texture* tex = nullptr;
+	static int cur_frame = 1;
+	static int max_frame = 5;
+	static char sprite_name[255] = { 0, };
+
 	ImVec2 img_size = { 200, 200 };
 	ImGui::SetCursorPosX((ImGui::GetWindowSize().x - ImGui::CalcItemSize(img_size, img_size.x, img_size.y).x) / 4);
 
-	Texture* tex = RESOURCE->UseResource<Texture>(uv_sprite_data.texture_id);
-	if (tex)
+	
+	tex = RESOURCE->UseResource<Texture>(texture_id);
+
+	if(tex)
 		ImGui::Image((void*)tex->srv.Get(), img_size);
 
-	if (uv_sprite_data.uv_list.size() > 0)
+	if (uv_sprite_data.uv_list.size() > 0 && tex)
 	{
 		ImGui::SameLine();
-		auto uv = uv_sprite_data.uv_list[min(uv_sprite_data.cur_frame - 1, (int)uv_sprite_data.uv_list.size() - 1)];
-		auto texture = RESOURCE->UseResource<Texture>(uv_sprite_data.texture_id);
-		float tex_width = (float)texture->texture_desc.Width;
-		float tex_height = (float)texture->texture_desc.Height;
+		auto uv = uv_sprite_data.uv_list[min((int)cur_frame - 1, (int)uv_sprite_data.uv_list.size() - 1)];
+		float tex_width = (float)tex->texture_desc.Width;
+		float tex_height = (float)tex->texture_desc.Height;
 		ImVec2 start(uv.first.x / tex_width, uv.first.y / tex_height);
 		ImVec2 end(uv.second.x / tex_width, uv.second.y / tex_height);
 		ImGui::Image((void*)tex->srv.Get(), img_size, start, end);
 	}
-	
-
 
 	// 프레임 선택
-	SelectFrame(uv_sprite_data.max_frame, uv_sprite_data.cur_frame);
+	SelectFrame(max_frame, cur_frame);
 
 	// 텍스쳐 선택
-	SelectTexture(uv_sprite_data.texture_id);
+	SelectTexture(texture_id);
 	
-
 	// UV 값 설정
 	if (uv_sprite_data.uv_list.size() > uv_sprite_data.max_frame)
 		uv_sprite_data.uv_list.resize(uv_sprite_data.max_frame);
-	ImGui::SameLine();
 	SelectUV(uv_sprite_data.uv_list, uv_sprite_data.max_frame);
 
-	
-	// VS 선택
-	SelectVertexShader(uv_sprite_data.vs_id);
-	
-	// PS 선택
-	ImGui::SameLine();
-	SelectPixelShader(uv_sprite_data.ps_id);
-
-	// 블랜딩 옵션들
-	SelectBlendOptions();
-
 	ImGui::SetNextItemWidth(TEXT_WIDTH);
-	ImGui::InputTextWithHint("effectName", "Name", uv_sprite_data.effect_name, IM_ARRAYSIZE(uv_sprite_data.effect_name));
+	ImGui::InputTextWithHint("sprite name", "Name", sprite_name, IM_ARRAYSIZE(sprite_name));
 
-	ImGui::SameLine();
 	if (ImGui::Button("Save"))
 	{
-		// TODO : 데이터 테이블을 통한 저장
-		SaveUVSprite(uv_sprite_data);
+		SaveUVSprite(sprite_name);
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Reset"))
 	{
-		uv_sprite_data.max_frame = 10;
-		uv_sprite_data.cur_frame = 1;
-		uv_sprite_data.texture_id = "";
-		uv_sprite_data.uv_list.clear();
-		uv_sprite_data.vs_id = "";
-		uv_sprite_data.ps_id = "";
-		memset(uv_sprite_data.effect_name, 0, sizeof(char) * strlen(uv_sprite_data.effect_name));
-	}
-	ImGui::SameLine();
-	if (ImGui::Button("Render"))
-	{
-		auto scene = SCENE->LoadScene("EffectTool");
-		EffectTool* effect_scene = dynamic_cast<EffectTool*>(scene);
-		if (effect_scene)
-			effect_scene->uv_sprite_.SetUVSprite(effect_scene->reg_effect_tool_, uv_sprite_data);
+		texture_id = "";
+		tex = nullptr;
+		cur_frame = 1;
+		max_frame = 5;
+		memset(sprite_name, 0, sizeof(char) * strlen(sprite_name));
 	}
 }
 
 void WG_EffectWindow::TexSpriteBoard()
 {
+	static string texture_id = "";
+	static Texture* tex = nullptr;
+	static int cur_frame = 1;
+	static int max_frame = 5;
+	static char sprite_name[255] = { 0, };
+
 	ImVec2 img_size = { 200, 200 };
 	ImGui::SetCursorPosX((ImGui::GetWindowSize().x - ImGui::CalcItemSize(img_size, img_size.x, img_size.y).x) / 4);
+	
 
-	Texture* tex = RESOURCE->UseResource<Texture>(tex_sprite_data.texture_id);
+	tex = RESOURCE->UseResource<Texture>(texture_id);
+
 	if (tex)
 		ImGui::Image((void*)tex->srv.Get(), img_size);
 
@@ -219,27 +203,26 @@ void WG_EffectWindow::TexSpriteBoard()
 	if (tex_sprite_data.tex_id_list.size() > 0)
 	{
 		ImGui::SameLine();
-		tex = RESOURCE->UseResource<Texture>(tex_sprite_data.tex_id_list[min(tex_sprite_data.cur_frame - 1, (int)tex_sprite_data.tex_id_list.size() - 1)]);
+		tex = RESOURCE->UseResource<Texture>(tex_sprite_data.tex_id_list[min((int)cur_frame - 1, (int)tex_sprite_data.tex_id_list.size() - 1)]);
 		ImGui::Image((void*)tex->srv.Get(), img_size);
 	}
 		
 
 	// 프레임 선택
-	SelectFrame(tex_sprite_data.max_frame, tex_sprite_data.cur_frame);
+	SelectFrame(max_frame, cur_frame);
 
 	// 텍스쳐 선택
-	SelectTexture(tex_sprite_data.texture_id);
+	SelectTexture(texture_id);
 
 	if (tex_sprite_data.tex_id_list.size() > tex_sprite_data.max_frame)
 		tex_sprite_data.tex_id_list.resize(tex_sprite_data.max_frame);
 
 	// 텍스쳐 배열 추가
-	ImGui::SameLine();
 	if (ImGui::Button("Add"))
 	{
 		if (tex_sprite_data.tex_id_list.size() == tex_sprite_data.max_frame)
 			tex_sprite_data.max_frame++;
-		tex_sprite_data.tex_id_list.push_back(tex_sprite_data.texture_id);
+		tex_sprite_data.tex_id_list.push_back(texture_id);
 	}
 
 	//ImGui::SameLine();
@@ -260,56 +243,63 @@ void WG_EffectWindow::TexSpriteBoard()
 		}
 		ImGui::EndListBox();
 	}
-	ImGui::SameLine();
+
 	if (ImGui::Button("Delete Last Frame"))
 	{
 		if (tex_sprite_data.tex_id_list.size() > 0)
 			tex_sprite_data.tex_id_list.pop_back();
 	}
 
-	// VS 선택
-	SelectVertexShader(tex_sprite_data.vs_id);
-
-	// PS 선택
-	ImGui::SameLine();
-	SelectPixelShader(tex_sprite_data.ps_id);
-
-	// 블랜딩 옵션들
-	SelectBlendOptions();
-
 	ImGui::SetNextItemWidth(TEXT_WIDTH);
-	ImGui::InputTextWithHint("effectName", "Name", tex_sprite_data.effect_name, IM_ARRAYSIZE(tex_sprite_data.effect_name));
-	ImGui::SameLine();
+	ImGui::InputTextWithHint("sprite name", "Name", sprite_name, IM_ARRAYSIZE(sprite_name));
 
 	if (ImGui::Button("Save"))
 	{
 		// TODO : 데이터 테이블을 통한 저장
-		SaveTexSprite(tex_sprite_data);
+		SaveTexSprite(sprite_name);
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Reset"))
 	{
-		 tex_sprite_data.max_frame = 10;
-		 tex_sprite_data.cur_frame = 1;
-		 tex_sprite_data.texture_id = "";
-		 tex_sprite_data.tex_id_list.clear();
-		 tex_sprite_data.vs_id = "";
-		 tex_sprite_data.ps_id = "";
-		 memset(tex_sprite_data.effect_name, 0, sizeof(char) * strlen(tex_sprite_data.effect_name));
+		texture_id = "";
+		tex = nullptr;
+		cur_frame = 1;
+		max_frame = 5;
+		memset(sprite_name, 0, sizeof(char) * strlen(sprite_name));
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Render"))
 	{
-		auto scene = SCENE->LoadScene("EffectTool");
-		EffectTool* effect_scene = dynamic_cast<EffectTool*>(scene);
-		if (effect_scene)
-			effect_scene->tex_sprite_.SetTexSprite(effect_scene->reg_effect_tool_, tex_sprite_data);
+		
 	}
 }
 
 void WG_EffectWindow::ParticlesBoard()
 {
-	
+	static Texture* tex = nullptr;
+	static int cur_frame = 1;
+	static int max_frame = 5;
+	static char particle_name[255] = { 0, };
+
+	ImVec2 img_size = { 200, 200 };
+	ImGui::SetCursorPosX((ImGui::GetWindowSize().x - ImGui::CalcItemSize(img_size, img_size.x, img_size.y).x) / 2);
+	ImGui::Image(nullptr, img_size);
+
+	SelectVertexShader(emitter_data.vs_id);
+	SelectGeometryShader(emitter_data.geo_id);
+	SelectPixelShader(emitter_data.ps_id);
+
+	ImGui::SetNextItemWidth(TEXT_WIDTH);
+	ImGui::InputTextWithHint("sprite name", "Name", particle_name, IM_ARRAYSIZE(particle_name));
+	if (ImGui::Button("Save"))
+	{
+
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Reset"))
+	{
+
+	}
 }
 
 void WG_EffectWindow::SelectBlendOptions()
@@ -355,19 +345,19 @@ void WG_EffectWindow::SelectBlendOptions()
 
 void WG_EffectWindow::SelectFrame(int& max_frame, int& cur_frame)
 {
+	
+
+	// currentFrame 선택
+	ImGui::SetNextItemWidth(200.0f);
+	ImGui::SliderInt("Frame", &cur_frame, 1, max_frame);
 	// MaxFrame 선택
 	ImGui::SetNextItemWidth(100.0f);
 	ImGui::InputInt("Max Frame", &max_frame);
-
-	// currentFrame 선택
-	ImGui::SameLine();
-	ImGui::SetNextItemWidth(200.0f);
-	ImGui::SliderInt("Frame", &cur_frame, 1, max_frame);
+	
 
 	static bool bPlay = false;
 	static float timer = cur_frame;
 	// Play 버튼
-	ImGui::SameLine();
 	if (ImGui::Button("Play"))
 	{
 		bPlay = true;
@@ -403,10 +393,8 @@ void WG_EffectWindow::SelectUV(vector<pair<POINT, POINT>>& list, int& max_frame)
 	static int end[2] = { 0, 0 };
 	ImGui::SetNextItemWidth(100.0f);
 	ImGui::InputInt2("Start UV", start);
-	ImGui::SameLine();
 	ImGui::SetNextItemWidth(100.0f);
 	ImGui::InputInt2("End UV", end);
-	ImGui::SameLine();
 
 	if (ImGui::Button("Add"))
 	{
@@ -414,7 +402,6 @@ void WG_EffectWindow::SelectUV(vector<pair<POINT, POINT>>& list, int& max_frame)
 			max_frame++;
 		list.push_back({ {start[0], start[1]}, { end[0], end[1]} });
 	}
-	//ImGui::SameLine();
 	ImGui::SetNextItemWidth(LISTBOX_WIDTH + 100);
 	static int item_current_idx = 0;
 	if (ImGui::BeginListBox("UV per Frame"))
@@ -434,7 +421,6 @@ void WG_EffectWindow::SelectUV(vector<pair<POINT, POINT>>& list, int& max_frame)
 		}
 		ImGui::EndListBox();
 	}
-	ImGui::SameLine();
 	if (ImGui::Button("Delete Last Frame"))
 	{
 		if(list.size() > 0)
@@ -575,52 +561,49 @@ void WG_EffectWindow::SelectTexture(string& id)
 	id = tex_vec[item_current_idx];
 }
 
-void WG_EffectWindow::SaveUVSprite(UVSpriteData& data)
+void WG_EffectWindow::SaveUVSprite(string name)
 {
-	string sheetName = data.effect_name;
+	string sheetName = name;
 	if (sheetName.size() == 0)
 		return;
 	sheetName += ".csv";
 
 	auto sheet = DATA->AddNewSheet(sheetName);
 
-	auto effect = sheet->AddItem(data.effect_name);
+	auto effect = sheet->AddItem(name);
 	auto list = sheet->AddItem("uvList");
 	
 	sheet->AddCategory("MaxFrame");
 	sheet->AddCategory("tex_id");
-	sheet->AddCategory("vs_id");
-	sheet->AddCategory("ps_id");
 	sheet->AddCategory("type");
 
-	for (int i = 0; i < data.uv_list.size(); i++)
+	for (int i = 0; i < uv_sprite_data.uv_list.size(); i++)
 		sheet->AddCategory(to_string(i+1));
 
-	effect->SetValue("MaxFrame", to_string(data.max_frame));
-	effect->SetValue("tex_id", data.texture_id);
-	effect->SetValue("vs_id", data.vs_id);
-	effect->SetValue("ps_id", data.ps_id);
+	effect->SetValue("MaxFrame", to_string(uv_sprite_data.max_frame));
+	effect->SetValue("tex_id", uv_sprite_data.tex_id);
 	effect->SetValue("type", to_string(UV_SPRITE));
 
-	for (int i = 0; i < data.uv_list.size(); i++)
+	for (int i = 0; i < uv_sprite_data.uv_list.size(); i++)
 	{
-		string uvStr = to_string(data.uv_list[i].first.x) + " " + to_string(data.uv_list[i].first.y) + " " + to_string(data.uv_list[i].second.x) + " " + to_string(data.uv_list[i].second.y);
+		string uvStr = to_string(uv_sprite_data.uv_list[i].first.x) + " " + to_string(uv_sprite_data.uv_list[i].first.y) + " " 
+			+ to_string(uv_sprite_data.uv_list[i].second.x) + " " + to_string(uv_sprite_data.uv_list[i].second.y);
 		list->SetValue(to_string(i + 1), uvStr);
 	}
 		
 	DATA->SaveSheetFile(sheetName);
 }
 
-void WG_EffectWindow::SaveTexSprite(TexSpriteData& data)
+void WG_EffectWindow::SaveTexSprite(string name)
 {
-	string sheetName = data.effect_name;
+	string sheetName = name;
 	if (sheetName.size() == 0)
 		return;
 	sheetName += ".csv";
 
 	auto sheet = DATA->AddNewSheet(sheetName);
 
-	auto effect = sheet->AddItem(data.effect_name);
+	auto effect = sheet->AddItem(name);
 	auto list = sheet->AddItem("texList");
 
 	sheet->AddCategory("MaxFrame");
@@ -628,17 +611,15 @@ void WG_EffectWindow::SaveTexSprite(TexSpriteData& data)
 	sheet->AddCategory("ps_id");
 	sheet->AddCategory("type");
 
-	for (int i = 0; i < data.tex_id_list.size(); i++)
+	for (int i = 0; i < tex_sprite_data.tex_id_list.size(); i++)
 		sheet->AddCategory(to_string(i + 1));
 
-	effect->SetValue("MaxFrame", to_string(data.max_frame));
-	effect->SetValue("vs_id", data.vs_id);
-	effect->SetValue("ps_id", data.ps_id);
+	effect->SetValue("MaxFrame", to_string(tex_sprite_data.max_frame));
 	effect->SetValue("type", to_string(TEX_SPRITE));
 
-	for (int i = 0; i < data.tex_id_list.size(); i++)
+	for (int i = 0; i < tex_sprite_data.tex_id_list.size(); i++)
 	{
-		list->SetValue(to_string(i + 1), data.tex_id_list[i]);
+		list->SetValue(to_string(i + 1), tex_sprite_data.tex_id_list[i]);
 	}
 
 	DATA->SaveSheetFile(sheetName);
@@ -649,7 +630,7 @@ void WG_EffectWindow::SaveParticles()
 
 }
 
-void WG_EffectWindow::LoadingEffectData()
+void WG_EffectWindow::LoadingSpriteData()
 {
 	DATA->LoadSheetFile(loading_data_id_);
 	auto sheet = DATA->LoadSheet(loading_data_id_);
@@ -677,9 +658,7 @@ void WG_EffectWindow::LoadingEffectData()
 	{
 		type_ = UV_SPRITE;
 		uv_sprite_data.max_frame = stoi(item->GetValue("MaxFrame"));
-		uv_sprite_data.texture_id = item->GetValue("tex_id");
-		uv_sprite_data.vs_id = item->GetValue("vs_id");
-		uv_sprite_data.ps_id = item->GetValue("ps_id");
+		uv_sprite_data.tex_id = item->GetValue("tex_id");
 
 		// TODO : UVList 파싱... 데이터 형태 수정해야할듯
 		auto uvListItem = sheet->LoadItem("uvList");
@@ -707,8 +686,6 @@ void WG_EffectWindow::LoadingEffectData()
 	{
 		type_ = TEX_SPRITE;
 		tex_sprite_data.max_frame = stoi(item->GetValue("MaxFrame"));
-		tex_sprite_data.vs_id = item->GetValue("vs_id");
-		tex_sprite_data.ps_id = item->GetValue("ps_id");
 
 		// TODO : 데이터 형태 수정해야할듯
 		auto texListItem = sheet->LoadItem("texList");
@@ -742,51 +719,3 @@ void WG_EffectWindow::LoadingEffectData()
 	loading_data_id_ = "";
 }
 
-void WG_DataViewer::Update()
-{
-	ImGui::SetCurrentContext(GUI->GetContext());
-}
-
-void WG_DataViewer::Render()
-{
-	ImGui::Begin("Load Effect File", &open_);
-	{
-		/*static int item_current_idx = 0;
-
-		DATA->LoadAllData();
-		auto id_list = DATA->GetAllDataSheetID();
-		if (ImGui::BeginListBox("Data File"))
-		{
-			for (int n = 0; n < id_list.size(); n++)
-			{
-				const bool is_selected = (item_current_idx == n);
-				if (ImGui::Selectable(id_list[n].c_str(), is_selected))
-					item_current_idx = n;
-
-				if (is_selected)
-					ImGui::SetItemDefaultFocus();
-			}
-			ImGui::EndListBox();
-		}*/
-
-		
-
-		/*ImGui::SameLine();
-		if (ImGui::Button("Load"))
-		{
-			if (id_list.size() == 0)
-			{
-			}
-			else
-			{
-				auto tool_window = dynamic_cast<WG_EffectWindow*>(GUI->FindWidget("EffectTool"));
-				tool_window->set_loading_data_id(id_list[item_current_idx]);
-			}
-			GUI->FindWidget("FileViewer")->InvertOpen();
-			
-			
-		}*/
-
-	}
-	ImGui::End();
-}
