@@ -1,6 +1,8 @@
 #include "Widgets.h"
+#include "imfilebrowser.h"
 #include "SceneMgr.h"
 #include "EffectTool.h"
+#include "DXStates.h"
 
 using namespace KGCA41B;
 
@@ -21,7 +23,11 @@ void WG_MainMenu::Render()
 	{
 		if (ImGui::MenuItem("Effect"))
 		{
-			GUI->AddWidget("EffectTool", new WG_EffectWindow);
+			auto effect_tool = GUI->FindWidget("EffectTool");
+			if (effect_tool == nullptr)
+				GUI->AddWidget("EffectTool", new WG_EffectWindow);
+			else
+				effect_tool->InvertOpen();
 		}
 	}
 	ImGui::EndMainMenuBar();
@@ -59,15 +65,7 @@ void WG_EffectWindow::Render()
 				}
 				ImGui::EndMenu();
 			}
-			if (ImGui::BeginMenu("Load Effect"))
-			{
-				if (ImGui::MenuItem("Loading From DataManager"))
-				{
-					auto widget = new WG_DataViewer;
-					GUI->AddWidget("FileViewer", widget);
-				}
-				ImGui::EndMenu();
-			}
+			FileBrowser();
 		}
 		ImGui::EndMenuBar();
 
@@ -96,6 +94,39 @@ void WG_EffectWindow::Render()
 		}
 	}
 	ImGui::End();
+}
+
+void KGCA41B::WG_EffectWindow::FileBrowser()
+{
+	static ImGui::FileBrowser fileDialog;
+
+	if (ImGui::BeginMenu("Load Effect"))
+	{
+		if (ImGui::MenuItem("Load Sprite"))
+		{
+			fileDialog.Open();
+			fileDialog.SetTypeFilters({ ".csv" });
+		}
+		if (ImGui::MenuItem("Load Particle"))
+		{
+			fileDialog.Open();
+			fileDialog.SetTypeFilters({ ".csv" });
+		}
+		ImGui::EndMenu();
+	}
+		
+	fileDialog.Display();
+
+	if (fileDialog.HasSelected())
+	{
+		auto tool_window = dynamic_cast<WG_EffectWindow*>(GUI->FindWidget("EffectTool"));
+		tool_window->set_loading_data_id(fileDialog.GetSelected().string());
+		fileDialog.ClearSelected();
+
+		fileDialog.Close();
+	}
+
+	
 }
 
 void WG_EffectWindow::UVSpriteBoard()
@@ -298,21 +329,27 @@ void WG_EffectWindow::SelectBlendOptions()
 	ImGui::SameLine();
 	ImGui::Checkbox("WireFrame", &bWireFrame);
 
-	//if(bZbufferComp && bZbufferWrite)
-	//	DX11APP->GetDeviceContext()->OMSetDepthStencilState(DX11APP->GetCommonStates()->DepthDefault(), 0xff);
-	//else if(bZbufferComp)
-	//	DX11APP->GetDeviceContext()->OMSetDepthStencilState(DX11APP->GetCommonStates()->DepthRead(), 0xff);
-	//else if (bZbufferWrite) // 아직 모름
-	//	DX11APP->GetDeviceContext()->OMSetDepthStencilState(DX11APP->GetCommonStates()->DepthRead(), 0xff);
-	//else
-	//	DX11APP->GetDeviceContext()->OMSetDepthStencilState(DX11APP->GetCommonStates()->DepthNone(), 0xff);
+	// Z 버퍼 비교 & Z 버퍼 쓰기
+	if (bZbufferComp && bZbufferWrite)
+		DX11APP->GetDeviceContext()->OMSetDepthStencilState(DXStates::ds_defalut(), 1);
+	else if (bZbufferComp)
+		DX11APP->GetDeviceContext()->OMSetDepthStencilState(DXStates::ds_depth_enable_no_write(), 1);
+	else
+		DX11APP->GetDeviceContext()->OMSetDepthStencilState(DXStates::ds_depth_disable(), 1);
 
-	//if(bAlphaBlending && bAlphaTesting)
-	//	DX11APP->GetDeviceContext()->OMSetBlendState(DX11APP->GetCommonStates()->Additive(), 0, -1);
-	//else if(bAlphaBlending)
-	//	DX11APP->GetDeviceContext()->OMSetBlendState(DX11APP->GetCommonStates()->AlphaBlend(), 0, -1);
-	//else
-	//	DX11APP->GetDeviceContext()->OMSetBlendState(DX11APP->GetCommonStates()->Opaque(), 0, -1);
+	// 알파 블랜딩
+	if (bAlphaBlending)
+		DX11APP->GetDeviceContext()->OMSetBlendState(DXStates::bs_default(), 0, -1);
+	else
+		DX11APP->GetDeviceContext()->OMSetBlendState(0, 0, -1);
+
+	// 알파 테스팅?
+
+	// 와이어 프레임 체크
+	if (bWireFrame)
+		DX11APP->GetDeviceContext()->RSSetState(DXStates::rs_wireframe_cull_none());
+	else
+		DX11APP->GetDeviceContext()->RSSetState(DXStates::rs_solid_cull_none());
 
 }
 
@@ -609,14 +646,19 @@ void WG_EffectWindow::SaveTexSprite(TexSpriteData& data)
 
 void WG_EffectWindow::SaveParticles()
 {
+
 }
 
 void WG_EffectWindow::LoadingEffectData()
 {
+	DATA->LoadSheetFile(loading_data_id_);
 	auto sheet = DATA->LoadSheet(loading_data_id_);
 
-	auto strs = split(loading_data_id_, '.');
-	auto name = strs[0];
+	auto strs1 = split(loading_data_id_, '\\');
+	auto name = strs1[max((int)strs1.size() - 1, 0)];
+
+	auto strs2 = split(name, '.');
+	name = strs2[0];
 
 	auto item = sheet->LoadItem(name);
 	if (item == NULL)
@@ -709,7 +751,7 @@ void WG_DataViewer::Render()
 {
 	ImGui::Begin("Load Effect File", &open_);
 	{
-		static int item_current_idx = 0;
+		/*static int item_current_idx = 0;
 
 		DATA->LoadAllData();
 		auto id_list = DATA->GetAllDataSheetID();
@@ -725,9 +767,11 @@ void WG_DataViewer::Render()
 					ImGui::SetItemDefaultFocus();
 			}
 			ImGui::EndListBox();
-		}
+		}*/
 
-		ImGui::SameLine();
+		
+
+		/*ImGui::SameLine();
 		if (ImGui::Button("Load"))
 		{
 			if (id_list.size() == 0)
@@ -738,10 +782,10 @@ void WG_DataViewer::Render()
 				auto tool_window = dynamic_cast<WG_EffectWindow*>(GUI->FindWidget("EffectTool"));
 				tool_window->set_loading_data_id(id_list[item_current_idx]);
 			}
-			GUI->FindWidget("FileViewer")->open_ = false;
+			GUI->FindWidget("FileViewer")->InvertOpen();
 			
 			
-		}
+		}*/
 
 	}
 	ImGui::End();

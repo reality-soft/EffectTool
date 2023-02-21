@@ -17,6 +17,7 @@ namespace KGCA41B
 		virtual void Update() override;
 		virtual void Render() override;
 	private:
+		void	FileBrowser();
 		void	UVSpriteBoard();
 		void	TexSpriteBoard();
 		void	ParticlesBoard();
