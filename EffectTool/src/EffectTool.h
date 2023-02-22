@@ -3,17 +3,12 @@
 #include "Widgets.h"
 #include "EffectWidgetScene.h"
 #include "StageActor.h"
+#include "FX_Emitter.h"
 
 namespace KGCA41B
 {
 	class EffectTool : public KGCA41B::Scene
 	{
-	public:
-		virtual void OnInit();
-		virtual void OnUpdate();
-		virtual void OnRender();
-		virtual void OnRelease();
-
 	public:
 		entt::registry		reg_effect_tool_;
 	public:
@@ -29,5 +24,17 @@ namespace KGCA41B
 
 	public:
 		StageActor			stage_;
+
+	public:
+		vector<FX_Emitter>	emitter_list_; 
+
+	public:
+		virtual void OnInit();
+		virtual void OnUpdate();
+		virtual void OnRender();
+		virtual void OnRelease();
+
+	public:
+		void AddEmitter(Emitter emitter);
 	};
 }

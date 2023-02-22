@@ -11,6 +11,9 @@ using namespace KGCA41B;
 
 #define GET_VARIABLE_NAME(n) #n
 
+#define MIN 0
+#define MAX 1
+
 void WG_MainMenu::Update()
 {
 	ImGui::SetCurrentContext(GUI->GetContext());
@@ -41,27 +44,24 @@ void WG_EffectWindow::Update()
 
 void WG_EffectWindow::Render()
 {
-	ImGui::SetNextWindowSize(ImVec2(400, 600));
+	ImGui::SetNextWindowSize(ImVec2(450, 600));
 	ImGui::Begin("Effect Tool", &open_, ImGuiWindowFlags_MenuBar);
 	{
 		ImGui::BeginMenuBar();
 		{
-			if(loading_data_id_.size() != 0)
-				LoadingSpriteData();
-
 			if (ImGui::BeginMenu("New Effect"))
 			{
 				if (ImGui::MenuItem("UV Sprite"))
 				{
-					type_ = UV_SPRITE;
+					type_ = UV_TAB;
 				}
 				if (ImGui::MenuItem("Texture Sprite"))
 				{
-					type_ = TEX_SPRITE;
+					type_ = TEX_TAB;
 				}
 				if (ImGui::MenuItem("Particles"))
 				{
-					type_ = PARTICLES;
+					type_ = PARTICLE_TAB;
 				}
 				ImGui::EndMenu();
 			}
@@ -119,7 +119,7 @@ void WG_EffectWindow::FileBrowser()
 
 	if (fileDialog.HasSelected())
 	{
-		loading_data_id_ = fileDialog.GetSelected().string();
+		LoadingSpriteData(fileDialog.GetSelected().string());
 		fileDialog.ClearSelected();
 		fileDialog.Close();
 	}
@@ -127,17 +127,15 @@ void WG_EffectWindow::FileBrowser()
 
 void WG_EffectWindow::UVSpriteBoard()
 {
-	static string texture_id = "";
 	static Texture* tex = nullptr;
 	static int cur_frame = 1;
-	static int max_frame = 5;
 	static char sprite_name[255] = { 0, };
 
 	ImVec2 img_size = { 200, 200 };
-	ImGui::SetCursorPosX((ImGui::GetWindowSize().x - ImGui::CalcItemSize(img_size, img_size.x, img_size.y).x) / 4);
+	//ImGui::SetCursorPosX((ImGui::GetWindowSize().x - ImGui::CalcItemSize(img_size, img_size.x, img_size.y).x) / 2);
 
 	
-	tex = RESOURCE->UseResource<Texture>(texture_id);
+	tex = RESOURCE->UseResource<Texture>(uv_sprite_data.tex_id);
 
 	if(tex)
 		ImGui::Image((void*)tex->srv.Get(), img_size);
@@ -145,7 +143,7 @@ void WG_EffectWindow::UVSpriteBoard()
 	if (uv_sprite_data.uv_list.size() > 0 && tex)
 	{
 		ImGui::SameLine();
-		auto uv = uv_sprite_data.uv_list[min((int)cur_frame - 1, (int)uv_sprite_data.uv_list.size() - 1)];
+		auto uv = uv_sprite_data.uv_list[min(cur_frame - 1, (int)uv_sprite_data.uv_list.size() - 1)];
 		float tex_width = (float)tex->texture_desc.Width;
 		float tex_height = (float)tex->texture_desc.Height;
 		ImVec2 start(uv.first.x / tex_width, uv.first.y / tex_height);
@@ -154,10 +152,10 @@ void WG_EffectWindow::UVSpriteBoard()
 	}
 
 	// 프레임 선택
-	SelectFrame(max_frame, cur_frame);
+	SelectFrame(uv_sprite_data.max_frame, cur_frame);
 
 	// 텍스쳐 선택
-	SelectTexture(texture_id);
+	SelectTexture(uv_sprite_data.tex_id);
 	
 	// UV 값 설정
 	if (uv_sprite_data.uv_list.size() > uv_sprite_data.max_frame)
@@ -174,11 +172,13 @@ void WG_EffectWindow::UVSpriteBoard()
 	ImGui::SameLine();
 	if (ImGui::Button("Reset"))
 	{
-		texture_id = "";
 		tex = nullptr;
 		cur_frame = 1;
-		max_frame = 5;
 		memset(sprite_name, 0, sizeof(char) * strlen(sprite_name));
+
+		uv_sprite_data.tex_id = "";
+		uv_sprite_data.uv_list.clear();
+		uv_sprite_data.max_frame = 5;
 	}
 }
 
@@ -187,11 +187,10 @@ void WG_EffectWindow::TexSpriteBoard()
 	static string texture_id = "";
 	static Texture* tex = nullptr;
 	static int cur_frame = 1;
-	static int max_frame = 5;
 	static char sprite_name[255] = { 0, };
 
 	ImVec2 img_size = { 200, 200 };
-	ImGui::SetCursorPosX((ImGui::GetWindowSize().x - ImGui::CalcItemSize(img_size, img_size.x, img_size.y).x) / 4);
+	//ImGui::SetCursorPosX((ImGui::GetWindowSize().x - ImGui::CalcItemSize(img_size, img_size.x, img_size.y).x) / 2);
 	
 
 	tex = RESOURCE->UseResource<Texture>(texture_id);
@@ -209,7 +208,7 @@ void WG_EffectWindow::TexSpriteBoard()
 		
 
 	// 프레임 선택
-	SelectFrame(max_frame, cur_frame);
+	SelectFrame(tex_sprite_data.max_frame, cur_frame);
 
 	// 텍스쳐 선택
 	SelectTexture(texture_id);
@@ -264,8 +263,10 @@ void WG_EffectWindow::TexSpriteBoard()
 		texture_id = "";
 		tex = nullptr;
 		cur_frame = 1;
-		max_frame = 5;
 		memset(sprite_name, 0, sizeof(char) * strlen(sprite_name));
+
+		tex_sprite_data.tex_id_list.clear();
+		tex_sprite_data.max_frame = 5;
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Render"))
@@ -276,18 +277,122 @@ void WG_EffectWindow::TexSpriteBoard()
 
 void WG_EffectWindow::ParticlesBoard()
 {
-	static Texture* tex = nullptr;
-	static int cur_frame = 1;
-	static int max_frame = 5;
 	static char particle_name[255] = { 0, };
+	static int cur_frame	= 1;
+	static float timer		= 1.0f;
 
-	ImVec2 img_size = { 200, 200 };
-	ImGui::SetCursorPosX((ImGui::GetWindowSize().x - ImGui::CalcItemSize(img_size, img_size.x, img_size.y).x) / 2);
-	ImGui::Image(nullptr, img_size);
 
+	// Render Selected Sprite
+	auto sprite = RESOURCE->UseResource<Sprite>(emitter_data.sprite_id);
+	if (sprite)
+	{
+		Texture* tex = nullptr;
+		ImVec2 img_size = { 200, 200 };
+		// 스프라이트 타입에 따라 다르게 랜더링
+		// UV Sprite
+		if (sprite->type == UV)
+		{
+			UVSprite* uv_sprite = (UVSprite*)sprite;
+			tex = RESOURCE->UseResource<Texture>(uv_sprite->tex_id);
+
+			// 프레임 처리
+			timer += TIMER->GetDeltaTime();
+			if (timer > uv_sprite->max_frame + 1)
+				timer -= uv_sprite->max_frame;
+			cur_frame = (int)timer;
+
+			auto uv = uv_sprite->uv_list[min((int)cur_frame - 1, (int)uv_sprite->uv_list.size() - 1)];
+			float tex_width = (float)tex->texture_desc.Width;
+			float tex_height = (float)tex->texture_desc.Height;
+			ImVec2 start(uv.first.x / tex_width, uv.first.y / tex_height);
+			ImVec2 end(uv.second.x / tex_width, uv.second.y / tex_height);
+
+			
+			ImGui::SetCursorPosX((ImGui::GetWindowSize().x - ImGui::CalcItemSize(img_size, img_size.x, img_size.y).x) / 2);
+			ImGui::Image((void*)tex->srv.Get(), img_size, start, end);
+		}
+		// Texture Sprite
+		else if (sprite->type == TEX)
+		{
+			TextureSprite* tex_sprite = (TextureSprite*)sprite;
+			// 프레임 처리
+			timer += TIMER->GetDeltaTime();
+			if (timer > tex_sprite->max_frame + 1)
+				timer -= tex_sprite->max_frame;
+			cur_frame = (int)timer;
+
+			tex = RESOURCE->UseResource<Texture>(tex_sprite->tex_id_list[min((int)cur_frame - 1, (int)tex_sprite->tex_id_list.size() - 1)]);
+
+			ImGui::SetCursorPosX((ImGui::GetWindowSize().x - ImGui::CalcItemSize(img_size, img_size.x, img_size.y).x) / 2);
+			ImGui::Image((void*)tex->srv.Get(), img_size);
+		}
+	}
+	
+
+	// Sprite_id or Something?
+	ImGui::Text("Sprite");
+	SelectSprite(emitter_data.sprite_id);
+
+	// Particle Count
+	ImGui::Text("Particle Count");
+	ImGui::SetNextItemWidth(150.0f);
+	ImGui::InputInt("Particle Count", &emitter_data.particle_count);
+
+	// Life Time
+	ImGui::Text("Life Time (seconds)");
+	ImGui::SetNextItemWidth(50.0f);
+	ImGui::InputFloat("Life Time Min", &emitter_data.life_time[MIN]);
+	ImGui::SetNextItemWidth(50.0f);
+	ImGui::InputFloat("Life Time Max", &emitter_data.life_time[MAX]);
+
+	// Initial Size
+	static float size_min[3] = { 0, };
+	static float size_max[3] = { 0, };
+	ImGui::Text("Initial Size (x,y,z)");
+	ImGui::SetNextItemWidth(150.0f);
+	ImGui::InputFloat3("Size Min", size_min, "%.1f");
+	ImGui::SetNextItemWidth(150.0f);
+	ImGui::InputFloat3("Size Max", size_max, "%.1f");
+
+	emitter_data.initial_size[MIN].x = size_min[0];
+	emitter_data.initial_size[MIN].y = size_min[1];
+	emitter_data.initial_size[MIN].z = size_min[2];
+
+	emitter_data.initial_size[MAX].x = size_max[0];
+	emitter_data.initial_size[MAX].y = size_max[1];
+	emitter_data.initial_size[MAX].z = size_max[2];
+
+	// Initial Velocity
+	static float vel_min[3] = { 0, };
+	static float vel_max[3] = { 0, };
+	ImGui::Text("Initial Velocity (x,y,z)");
+	ImGui::SetNextItemWidth(150.0f);
+	ImGui::InputFloat3("Vel Min", vel_min, "%.1f");
+	ImGui::SetNextItemWidth(150.0f);
+	ImGui::InputFloat3("Vel Max", vel_max, "%.1f");
+
+	emitter_data.initial_velocity[MIN].x = vel_min[0];
+	emitter_data.initial_velocity[MIN].y = vel_min[1];
+	emitter_data.initial_velocity[MIN].z = vel_min[2];
+
+	emitter_data.initial_velocity[MAX].x = vel_max[0];
+	emitter_data.initial_velocity[MAX].y = vel_max[1];
+	emitter_data.initial_velocity[MAX].z = vel_max[2];
+
+	// Initial Rotation
+	ImGui::Text("Initial Rotation (Angle)");
+	ImGui::SetNextItemWidth(50.0f);
+	ImGui::InputFloat("Rotation Min", &emitter_data.initial_rotation[MIN]);
+	ImGui::SetNextItemWidth(50.0f);
+	ImGui::InputFloat("Rotation Max", &emitter_data.initial_rotation[MAX]);
+
+
+	
 	SelectVertexShader(emitter_data.vs_id);
 	SelectGeometryShader(emitter_data.geo_id);
 	SelectPixelShader(emitter_data.ps_id);
+
+	SelectBlendOptions();
 
 	ImGui::SetNextItemWidth(TEXT_WIDTH);
 	ImGui::InputTextWithHint("sprite name", "Name", particle_name, IM_ARRAYSIZE(particle_name));
@@ -299,6 +404,13 @@ void WG_EffectWindow::ParticlesBoard()
 	if (ImGui::Button("Reset"))
 	{
 
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Render"))
+	{
+		auto scene = (EffectTool*)SCENE->LoadScene("EffectTool");
+		if (scene)
+			scene->AddEmitter(emitter_data);
 	}
 }
 
@@ -312,11 +424,9 @@ void WG_EffectWindow::SelectBlendOptions()
 	ImGui::Checkbox("Z buffer Comp", &bZbufferComp);
 	ImGui::SameLine();
 	ImGui::Checkbox("Z buffer Write", &bZbufferWrite);
-	ImGui::SameLine();
 	ImGui::Checkbox("AlphaBlending", &bAlphaBlending);
 	ImGui::SameLine();
 	ImGui::Checkbox("AlphaTesting", &bAlphaTesting);
-	ImGui::SameLine();
 	ImGui::Checkbox("WireFrame", &bWireFrame);
 
 	// Z 버퍼 비교 & Z 버퍼 쓰기
@@ -345,8 +455,6 @@ void WG_EffectWindow::SelectBlendOptions()
 
 void WG_EffectWindow::SelectFrame(int& max_frame, int& cur_frame)
 {
-	
-
 	// currentFrame 선택
 	ImGui::SetNextItemWidth(200.0f);
 	ImGui::SliderInt("Frame", &cur_frame, 1, max_frame);
@@ -561,6 +669,41 @@ void WG_EffectWindow::SelectTexture(string& id)
 	id = tex_vec[item_current_idx];
 }
 
+void WG_EffectWindow::SelectSprite(string& id)
+{
+	static int item_current_idx = 0;
+
+	// 가지고 있는 스프라이트 아이디를 리스트화 하기 위해 vector로 id 받아오기
+	auto sprite_id_set = RESOURCE->GetTotalSpriteID();
+	vector<string> sprite_id(sprite_id_set.begin(), sprite_id_set.end());
+
+	// 위에서 설정된 tex_id가 있다면 그 값으로 item_current_idx 변경
+	for (int i = 0; i < sprite_id.size(); i++)
+	{
+		if (sprite_id[i] == id)
+			item_current_idx = i;
+	}
+
+	ImGui::SetNextItemWidth(LISTBOX_WIDTH);
+	if (ImGui::BeginListBox("Sprite"))
+	{
+		for (int n = 0; n < sprite_id.size(); n++)
+		{
+			const bool is_selected = (item_current_idx == n);
+			if (ImGui::Selectable(sprite_id[n].c_str(), is_selected))
+				item_current_idx = n;
+
+			// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+			if (is_selected)
+				ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndListBox();
+	}
+
+	if(sprite_id.size() > 0)
+		id = sprite_id[item_current_idx];
+}
+
 void WG_EffectWindow::SaveUVSprite(string name)
 {
 	string sheetName = name;
@@ -592,6 +735,8 @@ void WG_EffectWindow::SaveUVSprite(string name)
 	}
 		
 	DATA->SaveSheetFile(sheetName);
+
+	RESOURCE->SaveSprite(name, make_shared<UVSprite>(uv_sprite_data));
 }
 
 void WG_EffectWindow::SaveTexSprite(string name)
@@ -623,6 +768,9 @@ void WG_EffectWindow::SaveTexSprite(string name)
 	}
 
 	DATA->SaveSheetFile(sheetName);
+
+	// 세이브 한 스프라이트를 스프라이트 리스트에 추가한다.
+	RESOURCE->SaveSprite(name, make_shared<TextureSprite>(tex_sprite_data));
 }
 
 void WG_EffectWindow::SaveParticles()
@@ -630,92 +778,128 @@ void WG_EffectWindow::SaveParticles()
 
 }
 
-void WG_EffectWindow::LoadingSpriteData()
+void WG_EffectWindow::LoadingSpriteData(string path)
 {
-	DATA->LoadSheetFile(loading_data_id_);
-	auto sheet = DATA->LoadSheet(loading_data_id_);
-
-	auto strs1 = split(loading_data_id_, '\\');
+	auto strs1 = split(path, '\\');
 	auto name = strs1[max((int)strs1.size() - 1, 0)];
-
 	auto strs2 = split(name, '.');
 	name = strs2[0];
 
-	auto item = sheet->LoadItem(name);
-	if (item == NULL)
-		return;
+	auto sprite = RESOURCE->UseResource<Sprite>(name);
 
-	string str_type = item->GetValue("type");
-
-	if (str_type == "")
-		return;
-
-	type_ = (E_Effect)stoi(str_type);
-
-	switch (type_)
+	if (!sprite)
 	{
-	case UV_SPRITE:
-	{
-		type_ = UV_SPRITE;
-		uv_sprite_data.max_frame = stoi(item->GetValue("MaxFrame"));
-		uv_sprite_data.tex_id = item->GetValue("tex_id");
-
-		// TODO : UVList 파싱... 데이터 형태 수정해야할듯
-		auto uvListItem = sheet->LoadItem("uvList");
-		// 리스트에서 가장 높은 프레임의 값을 가져온다.
-		int max = 0;
-		for (int i = 1; i <= uv_sprite_data.max_frame + 1; i++)
-		{
-			if (uvListItem->values[to_string(i)] == "")
-			{
-				max = i-1;
-				break;
-			}
-				
-		}
-		// 가장 낮은 프레임부터 가장 높은 프레임까지 파싱해서 uv값을 넣어준다.
-		uv_sprite_data.uv_list.clear();
-		for (int i = 0; i < max; i++)
-		{
-			// 0 0 25 25 형식
-			auto splited_str = split(uvListItem->values[to_string(i + 1)], ' ');
-			uv_sprite_data.uv_list.push_back({ { stol(splited_str[0]), stol(splited_str[1]) }, { stol(splited_str[2]), stol(splited_str[3]) } });
-		}
-	} break;
-	case TEX_SPRITE:
-	{
-		type_ = TEX_SPRITE;
-		tex_sprite_data.max_frame = stoi(item->GetValue("MaxFrame"));
-
-		// TODO : 데이터 형태 수정해야할듯
-		auto texListItem = sheet->LoadItem("texList");
-		// 리스트에서 가장 높은 프레임의 값을 가져온다.
-		int max = 0;
-		for (int i = 1; i <= uv_sprite_data.max_frame + 1; i++)
-		{
-			if (texListItem->values[to_string(i + 1)] == "")
-			{
-				max = i-1;
-				break;
-			}
-		}
-		// 가장 낮은 프레임부터 가장 높은 프레임까지 파싱해서 tex_id값을 넣어준다.
-		tex_sprite_data.tex_id_list.clear();
-		for (int i = 0; i < max; i++)
-		{
-			tex_sprite_data.tex_id_list.push_back(texListItem->values[to_string(i + 1)]);
-		}
-	} break;
-	case PARTICLES:
-	{
-		type_ = PARTICLES;
-	} break;
-	default:
-	{
-		
-	} break;
+		if (!RESOURCE->ImportSprite(path))
+			return;
+		sprite = RESOURCE->UseResource<Sprite>(name);
 	}
 
-	loading_data_id_ = "";
-}
+	UVSprite* uv_sprite = nullptr;
+	TextureSprite* tex_sprite = nullptr;
 
+	switch (sprite->type)
+	{
+	case UV:
+		type_ = UV_TAB;
+		uv_sprite = (UVSprite*)sprite;
+		if(uv_sprite)
+			uv_sprite_data = *uv_sprite;
+		break;
+	case TEX:
+		type_ = TEX_TAB;
+		tex_sprite = (TextureSprite*)sprite;
+		if (tex_sprite)
+			tex_sprite_data = *tex_sprite;
+		break;
+	}
+	//DATA->LoadSheetFile(loading_data_id_);
+	//auto sheet = DATA->LoadSheet(loading_data_id_);
+
+	//auto strs1 = split(loading_data_id_, '\\');
+	//auto name = strs1[max((int)strs1.size() - 1, 0)];
+
+	//auto strs2 = split(name, '.');
+	//name = strs2[0];
+
+	//auto item = sheet->LoadItem(name);
+	//if (item == NULL)
+	//	return;
+
+	//string str_type = item->GetValue("type");
+
+	//if (str_type == "")
+	//	return;
+
+	//E_Effect type = (E_Effect)stoi(str_type);
+
+	//switch (type)
+	//{
+	//case UV_SPRITE:
+	//{
+	//	type_ = UV_TAB;
+	//	uv_sprite_data.max_frame = stoi(item->GetValue("MaxFrame"));
+	//	uv_sprite_data.tex_id = item->GetValue("tex_id");
+
+	//	// TODO : UVList 파싱... 데이터 형태 수정해야할듯
+	//	auto uvListItem = sheet->LoadItem("uvList");
+	//	// 리스트에서 가장 높은 프레임의 값을 가져온다.
+	//	int max = 0;
+	//	for (int i = 1; i <= uv_sprite_data.max_frame + 1; i++)
+	//	{
+	//		if (uvListItem->values[to_string(i)] == "")
+	//		{
+	//			max = i-1;
+	//			break;
+	//		}
+	//			
+	//	}
+	//	// 가장 낮은 프레임부터 가장 높은 프레임까지 파싱해서 uv값을 넣어준다.
+	//	uv_sprite_data.uv_list.clear();
+	//	for (int i = 0; i < max; i++)
+	//	{
+	//		// 0 0 25 25 형식
+	//		auto splited_str = split(uvListItem->values[to_string(i + 1)], ' ');
+	//		uv_sprite_data.uv_list.push_back({ { stol(splited_str[0]), stol(splited_str[1]) }, { stol(splited_str[2]), stol(splited_str[3]) } });
+	//	}
+	//	
+	//	// 로딩한 스프라이트를 리스트에 넣는다.
+	//	sprite_list.insert({ name, make_shared<UVSprite>(uv_sprite_data) });
+	//} break;
+	//case TEX_SPRITE:
+	//{
+	//	type_ = TEX_TAB;
+	//	tex_sprite_data.max_frame = stoi(item->GetValue("MaxFrame"));
+
+	//	// TODO : 데이터 형태 수정해야할듯
+	//	auto texListItem = sheet->LoadItem("texList");
+	//	// 리스트에서 가장 높은 프레임의 값을 가져온다.
+	//	int max = 0;
+	//	for (int i = 1; i <= tex_sprite_data.max_frame + 1; i++)
+	//	{
+	//		if (texListItem->values[to_string(i)] == "")
+	//		{
+	//			max = i-1;
+	//			break;
+	//		}
+	//	}
+	//	// 가장 낮은 프레임부터 가장 높은 프레임까지 파싱해서 tex_id값을 넣어준다.
+	//	tex_sprite_data.tex_id_list.clear();
+	//	for (int i = 0; i < max; i++)
+	//	{
+	//		tex_sprite_data.tex_id_list.push_back(texListItem->values[to_string(i + 1)]);
+	//	}
+	//	// 로딩한 스프라이트를 리스트에 넣는다.
+	//	sprite_list.insert({ name, make_shared<TextureSprite>(tex_sprite_data) });
+	//} break;
+	//case PARTICLES:
+	//{
+	//	type_ = PARTICLE_TAB;
+	//} break;
+	//default:
+	//{
+	//	
+	//} break;
+	//}
+
+	//loading_data_id_ = "";
+}

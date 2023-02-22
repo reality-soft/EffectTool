@@ -24,7 +24,7 @@ void EffectTool::OnInit()
 	debug_camera_.yaw = 0;
 	debug_camera_.pitch = 0;
 	debug_camera_.roll = 0;
-	debug_camera_.speed = 100;
+	debug_camera_.speed = 10;
 	debug_camera_.tag = "Player";
 
 	reg_effect_tool_.emplace<Camera>(player_, debug_camera_);
@@ -46,6 +46,11 @@ void EffectTool::OnUpdate()
 	sys_camera_.OnUpdate(reg_effect_tool_);
 
 	stage_.OnUpdate(reg_effect_tool_);
+
+	for (auto emitter_actor : emitter_list_)
+	{
+		emitter_actor.OnUpdate(reg_effect_tool_);
+	}
 }
 
 void EffectTool::OnRender()
@@ -57,5 +62,11 @@ void EffectTool::OnRender()
 void EffectTool::OnRelease()
 {
 
+}
+
+void KGCA41B::EffectTool::AddEmitter(Emitter emitter)
+{
+	emitter_list_.push_back({});
+	emitter_list_[emitter_list_.size() - 1].OnInit(reg_effect_tool_, {}, emitter);
 }
 

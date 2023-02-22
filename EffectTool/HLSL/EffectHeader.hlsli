@@ -12,7 +12,4 @@ struct VS_OUT
 	float3 n : NORMAL;
 	float4 c : COLOR0;
 	float2 t : TEXCOORD0;
-
-	float1 strength : TEXCOORD1;
-	float3 selected : TEXCOORD2;
 };
