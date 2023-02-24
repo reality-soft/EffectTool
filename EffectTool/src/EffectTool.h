@@ -3,7 +3,7 @@
 #include "Widgets.h"
 #include "EffectWidgetScene.h"
 #include "StageActor.h"
-#include "FX_Emitter.h"
+#include "FX_Effect.h"
 
 namespace KGCA41B
 {
@@ -26,7 +26,13 @@ namespace KGCA41B
 		StageActor			stage_;
 
 	public:
-		vector<FX_Emitter>	emitter_list_; 
+		bool bZbufferComp = false;
+		bool bZbufferWrite = false;
+		bool bAlphaBlending = false;
+		bool bWireFrame = false;
+
+	public:
+		FX_Effect	effect_; 
 
 	public:
 		virtual void OnInit();

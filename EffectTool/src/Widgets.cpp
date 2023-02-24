@@ -2,7 +2,6 @@
 #include "imfilebrowser.h"
 #include "SceneMgr.h"
 #include "EffectTool.h"
-#include "DXStates.h"
 
 using namespace KGCA41B;
 
@@ -59,9 +58,9 @@ void WG_EffectWindow::Render()
 				{
 					type_ = TEX_TAB;
 				}
-				if (ImGui::MenuItem("Particles"))
+				if (ImGui::MenuItem("Emitter"))
 				{
-					type_ = PARTICLE_TAB;
+					type_ = EMITTER_TAB;
 				}
 				ImGui::EndMenu();
 			}
@@ -86,9 +85,9 @@ void WG_EffectWindow::Render()
 			TexSpriteBoard();
 		}
 		break;
-		case PARTICLES:
+		case EMITTER:
 		{
-			ParticlesBoard();
+			EmitterBoard();
 		}
 		break;
 		}
@@ -99,16 +98,18 @@ void WG_EffectWindow::Render()
 void WG_EffectWindow::FileBrowser()
 {
 	static ImGui::FileBrowser fileDialog;
-
+	static int type = 0;
 	if (ImGui::BeginMenu("Load Effect"))
 	{
 		if (ImGui::MenuItem("Load Sprite"))
 		{
+			type = 1;
 			fileDialog.Open();
 			fileDialog.SetTypeFilters({ ".csv" });
 		}
-		if (ImGui::MenuItem("Load Particle"))
+		if (ImGui::MenuItem("Load Emitter"))
 		{
+			type = 2;
 			fileDialog.Open();
 			fileDialog.SetTypeFilters({ ".csv" });
 		}
@@ -119,7 +120,11 @@ void WG_EffectWindow::FileBrowser()
 
 	if (fileDialog.HasSelected())
 	{
-		LoadingSpriteData(fileDialog.GetSelected().string());
+		if (type == 1)
+			LoadingSpriteData(fileDialog.GetSelected().string());
+		else if (type == 2)
+			LoadingEmitterData(fileDialog.GetSelected().string());
+
 		fileDialog.ClearSelected();
 		fileDialog.Close();
 	}
@@ -275,7 +280,7 @@ void WG_EffectWindow::TexSpriteBoard()
 	}
 }
 
-void WG_EffectWindow::ParticlesBoard()
+void WG_EffectWindow::EmitterBoard()
 {
 	static char particle_name[255] = { 0, };
 	static int cur_frame	= 1;
@@ -334,9 +339,15 @@ void WG_EffectWindow::ParticlesBoard()
 	SelectSprite(emitter_data.sprite_id);
 
 	// Particle Count
-	ImGui::Text("Particle Count");
+	ImGui::Text("Emit per Second");
 	ImGui::SetNextItemWidth(150.0f);
-	ImGui::InputInt("Particle Count", &emitter_data.particle_count);
+	ImGui::InputInt("Emit per Second", &emitter_data.emit_per_second);
+
+	// Color
+	ImGui::Text("Particle Color");
+	static ImVec4 color;
+	ImGui::ColorEdit3("Color", (float*)&emitter_data.color);
+	emitter_data.color.w = 1.0f;
 
 	// Life Time
 	ImGui::Text("Life Time (seconds)");
@@ -346,48 +357,44 @@ void WG_EffectWindow::ParticlesBoard()
 	ImGui::InputFloat("Life Time Max", &emitter_data.life_time[MAX]);
 
 	// Initial Size
-	static float size_min[3] = { 0, };
-	static float size_max[3] = { 0, };
 	ImGui::Text("Initial Size (x,y,z)");
 	ImGui::SetNextItemWidth(150.0f);
-	ImGui::InputFloat3("Size Min", size_min, "%.1f");
+	ImGui::InputFloat3("Size Min", (float*)&emitter_data.initial_size[MIN], "%.1f");
 	ImGui::SetNextItemWidth(150.0f);
-	ImGui::InputFloat3("Size Max", size_max, "%.1f");
+	ImGui::InputFloat3("Size Max", (float*)&emitter_data.initial_size[MAX], "%.1f");
 
-	emitter_data.initial_size[MIN].x = size_min[0];
-	emitter_data.initial_size[MIN].y = size_min[1];
-	emitter_data.initial_size[MIN].z = size_min[2];
 
-	emitter_data.initial_size[MAX].x = size_max[0];
-	emitter_data.initial_size[MAX].y = size_max[1];
-	emitter_data.initial_size[MAX].z = size_max[2];
-
-	// Initial Velocity
-	static float vel_min[3] = { 0, };
-	static float vel_max[3] = { 0, };
-	ImGui::Text("Initial Velocity (x,y,z)");
+	// Initial Position
+	ImGui::Text("Initial Position (x,y,z)");
 	ImGui::SetNextItemWidth(150.0f);
-	ImGui::InputFloat3("Vel Min", vel_min, "%.1f");
+	ImGui::InputFloat3("Pos Min", (float*)&emitter_data.initial_position[MIN], "%.1f");
 	ImGui::SetNextItemWidth(150.0f);
-	ImGui::InputFloat3("Vel Max", vel_max, "%.1f");
+	ImGui::InputFloat3("Pos Max", (float*)&emitter_data.initial_position[MAX], "%.1f");
 
-	emitter_data.initial_velocity[MIN].x = vel_min[0];
-	emitter_data.initial_velocity[MIN].y = vel_min[1];
-	emitter_data.initial_velocity[MIN].z = vel_min[2];
 
-	emitter_data.initial_velocity[MAX].x = vel_max[0];
-	emitter_data.initial_velocity[MAX].y = vel_max[1];
-	emitter_data.initial_velocity[MAX].z = vel_max[2];
+	// Size Per lifetime
+	ImGui::Text("Size per lifetime (x,y,z)");
+	ImGui::SetNextItemWidth(150.0f);
+	ImGui::InputFloat3("Size per Life Min", (float*)&emitter_data.size_per_lifetime[MIN], "%.1f");
+	ImGui::SetNextItemWidth(150.0f);
+	ImGui::InputFloat3("Size per Life Max", (float*)&emitter_data.size_per_lifetime[MAX], "%.1f");
 
-	// Initial Rotation
-	ImGui::Text("Initial Rotation (Angle)");
+
+	// Rotation Per lifetime
+	ImGui::Text("Rotation Per lifetime (Angle)");
 	ImGui::SetNextItemWidth(50.0f);
-	ImGui::InputFloat("Rotation Min", &emitter_data.initial_rotation[MIN]);
+	ImGui::InputFloat("Rot per life Min", &emitter_data.rotation_per_lifetime[MIN]);
 	ImGui::SetNextItemWidth(50.0f);
-	ImGui::InputFloat("Rotation Max", &emitter_data.initial_rotation[MAX]);
+	ImGui::InputFloat("Rot per life Max", &emitter_data.rotation_per_lifetime[MAX]);
 
+	// Velocity Per lifetime
+	ImGui::Text("Velocity per lifetime (x,y,z)");
+	ImGui::SetNextItemWidth(150.0f);
+	ImGui::InputFloat3("Vel per Life Min", (float*)&emitter_data.velocity_per_lifetime[MIN], "%.1f");
+	ImGui::SetNextItemWidth(150.0f);
+	ImGui::InputFloat3("Vel per Life Max", (float*)&emitter_data.velocity_per_lifetime[MAX], "%.1f");
 
-	
+	// Shader Selection
 	SelectVertexShader(emitter_data.vs_id);
 	SelectGeometryShader(emitter_data.geo_id);
 	SelectPixelShader(emitter_data.ps_id);
@@ -398,7 +405,7 @@ void WG_EffectWindow::ParticlesBoard()
 	ImGui::InputTextWithHint("sprite name", "Name", particle_name, IM_ARRAYSIZE(particle_name));
 	if (ImGui::Button("Save"))
 	{
-
+		SaveEmitter(particle_name);
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Reset"))
@@ -429,28 +436,13 @@ void WG_EffectWindow::SelectBlendOptions()
 	ImGui::Checkbox("AlphaTesting", &bAlphaTesting);
 	ImGui::Checkbox("WireFrame", &bWireFrame);
 
-	// Z 버퍼 비교 & Z 버퍼 쓰기
-	if (bZbufferComp && bZbufferWrite)
-		DX11APP->GetDeviceContext()->OMSetDepthStencilState(DXStates::ds_defalut(), 1);
-	else if (bZbufferComp)
-		DX11APP->GetDeviceContext()->OMSetDepthStencilState(DXStates::ds_depth_enable_no_write(), 1);
-	else
-		DX11APP->GetDeviceContext()->OMSetDepthStencilState(DXStates::ds_depth_disable(), 1);
-
-	// 알파 블랜딩
-	if (bAlphaBlending)
-		DX11APP->GetDeviceContext()->OMSetBlendState(DXStates::bs_default(), 0, -1);
-	else
-		DX11APP->GetDeviceContext()->OMSetBlendState(0, 0, -1);
+	auto scene = (EffectTool*)SCENE->LoadScene("EffectTool");
+	scene->bZbufferComp		= bZbufferComp;
+	scene->bZbufferWrite	= bZbufferWrite;
+	scene->bAlphaBlending	= bAlphaBlending;
+	scene->bWireFrame		= bWireFrame;
 
 	// 알파 테스팅?
-
-	// 와이어 프레임 체크
-	if (bWireFrame)
-		DX11APP->GetDeviceContext()->RSSetState(DXStates::rs_wireframe_cull_none());
-	else
-		DX11APP->GetDeviceContext()->RSSetState(DXStates::rs_solid_cull_none());
-
 }
 
 void WG_EffectWindow::SelectFrame(int& max_frame, int& cur_frame)
@@ -709,7 +701,6 @@ void WG_EffectWindow::SaveUVSprite(string name)
 	string sheetName = name;
 	if (sheetName.size() == 0)
 		return;
-	sheetName += ".csv";
 
 	auto sheet = DATA->AddNewSheet(sheetName);
 
@@ -744,7 +735,6 @@ void WG_EffectWindow::SaveTexSprite(string name)
 	string sheetName = name;
 	if (sheetName.size() == 0)
 		return;
-	sheetName += ".csv";
 
 	auto sheet = DATA->AddNewSheet(sheetName);
 
@@ -752,8 +742,6 @@ void WG_EffectWindow::SaveTexSprite(string name)
 	auto list = sheet->AddItem("texList");
 
 	sheet->AddCategory("MaxFrame");
-	sheet->AddCategory("vs_id");
-	sheet->AddCategory("ps_id");
 	sheet->AddCategory("type");
 
 	for (int i = 0; i < tex_sprite_data.tex_id_list.size(); i++)
@@ -773,9 +761,90 @@ void WG_EffectWindow::SaveTexSprite(string name)
 	RESOURCE->SaveSprite(name, make_shared<TextureSprite>(tex_sprite_data));
 }
 
-void WG_EffectWindow::SaveParticles()
+void WG_EffectWindow::SaveEmitter(string name)
 {
+	string sheetName = name;
+	if (sheetName.size() == 0)
+		return;
 
+	auto sheet = DATA->AddNewSheet(sheetName);
+
+	auto effect = sheet->AddItem(name);
+
+	// 카테고리 추가
+	sheet->AddCategory("type");
+
+	sheet->AddCategory("sprite_id");
+
+	sheet->AddCategory("emit_per_second");
+
+	sheet->AddCategory("color");
+
+	sheet->AddCategory("life_time");
+
+	sheet->AddCategory("initial_size");
+	sheet->AddCategory("initial_position");
+
+	sheet->AddCategory("size_per_lifetime");
+	sheet->AddCategory("rotation_per_lifetime");
+	sheet->AddCategory("velocity_per_lifetime");
+
+	sheet->AddCategory("vs_id");
+	sheet->AddCategory("geo_id");
+	sheet->AddCategory("ps_id");
+
+	// 값 추가
+
+	// type
+	effect->SetValue("type", to_string(EMITTER));
+
+	// sprite_id
+	effect->SetValue("sprite_id", emitter_data.sprite_id);
+
+	// emit_per_second
+	effect->SetValue("emit_per_second", to_string(emitter_data.emit_per_second));
+
+	string fmt = "";
+
+	// color
+	fmt = to_string(emitter_data.color.x) + " " + to_string(emitter_data.color.y) + " " + to_string(emitter_data.color.z) + " " + to_string(emitter_data.color.w);
+	effect->SetValue("color", fmt);
+
+	// life_time
+	fmt = to_string(emitter_data.life_time[0]) + " " + to_string(emitter_data.life_time[1]);
+	effect->SetValue("life_time", fmt);
+
+	// initial_size
+	fmt = to_string(emitter_data.initial_size[0].x) + " " + to_string(emitter_data.initial_size[0].y) + " " + to_string(emitter_data.initial_size[0].z) + "~"
+		+ to_string(emitter_data.initial_size[1].x) + " " + to_string(emitter_data.initial_size[1].y) + " " + to_string(emitter_data.initial_size[1].z);
+	effect->SetValue("initial_size", fmt);
+
+	// initial_position
+	fmt = to_string(emitter_data.initial_position[0].x) + " " + to_string(emitter_data.initial_position[0].y) + " " + to_string(emitter_data.initial_position[0].z) + "~"
+		+ to_string(emitter_data.initial_position[1].x) + " " + to_string(emitter_data.initial_position[1].y) + " " + to_string(emitter_data.initial_position[1].z);
+	effect->SetValue("initial_position", fmt);
+
+	// size_per_lifetime
+	fmt = to_string(emitter_data.size_per_lifetime[0].x) + " " + to_string(emitter_data.size_per_lifetime[0].y) + " " + to_string(emitter_data.size_per_lifetime[0].z) + "~"
+		+ to_string(emitter_data.size_per_lifetime[1].x) + " " + to_string(emitter_data.size_per_lifetime[1].y) + " " + to_string(emitter_data.size_per_lifetime[1].z);
+	effect->SetValue("size_per_lifetime", fmt);
+	// rotation_per_lifetime
+	fmt = to_string(emitter_data.rotation_per_lifetime[0]) + " " + to_string(emitter_data.rotation_per_lifetime[1]);
+	effect->SetValue("rotation_per_lifetime", fmt);
+	// velocity_per_lifetime
+	fmt = to_string(emitter_data.velocity_per_lifetime[0].x) + " " + to_string(emitter_data.velocity_per_lifetime[0].y) + " " + to_string(emitter_data.velocity_per_lifetime[0].z) + "~"
+		+ to_string(emitter_data.velocity_per_lifetime[1].x) + " " + to_string(emitter_data.velocity_per_lifetime[1].y) + " " + to_string(emitter_data.velocity_per_lifetime[1].z);
+	effect->SetValue("velocity_per_lifetime", fmt);
+
+	// vs_id
+	effect->SetValue("vs_id", emitter_data.vs_id);
+	// geo_id
+	effect->SetValue("geo_id", emitter_data.geo_id);
+	// ps_id
+	effect->SetValue("ps_id", emitter_data.ps_id);
+
+
+	DATA->SaveSheetFile(sheetName);
 }
 
 void WG_EffectWindow::LoadingSpriteData(string path)
@@ -902,4 +971,158 @@ void WG_EffectWindow::LoadingSpriteData(string path)
 	//}
 
 	//loading_data_id_ = "";
+}
+
+void WG_EffectWindow::LoadingEmitterData(string path)
+{
+	auto strs1 = split(path, '\\');
+	auto name = strs1[max((int)strs1.size() - 1, 0)];
+	auto strs2 = split(name, '.');
+	name = strs2[0];
+
+	auto sheet = DATA->LoadSheet(name);
+
+	if (sheet == NULL)
+	{
+		DATA->LoadSheetFile(path);
+		sheet = DATA->LoadSheet(name);
+	}
+		
+	if (sheet == NULL)
+		return;
+
+	auto effect = sheet->LoadItem(name);
+
+	// type
+	effect->GetValue("type");
+
+	// sprite_id
+	emitter_data.sprite_id			= effect->GetValue("sprite_id");
+
+	// emit_per_second
+	emitter_data.emit_per_second	= stoi(effect->GetValue("emit_per_second"));
+
+	vector<string> splited_str;
+	vector<string> splited_str2;
+
+	// color
+	{
+		splited_str = split(effect->GetValue("color"), ' ');
+		if (splited_str.size() < 4)
+			return;
+		emitter_data.color.x = stof(splited_str[0]);
+		emitter_data.color.y = stof(splited_str[1]);
+		emitter_data.color.z = stof(splited_str[2]);
+		emitter_data.color.w = stof(splited_str[3]);
+	}
+	
+
+	// life_time
+	{
+		splited_str = split(effect->GetValue("life_time"), ' ');
+		if (splited_str.size() < 2)
+			return;
+		emitter_data.life_time[0] = stof(splited_str[0]);
+		emitter_data.life_time[1] = stof(splited_str[1]);
+	}
+	
+
+	// initial_size
+	{
+		splited_str = split(effect->GetValue("initial_size"), '~');
+		if (splited_str.size() < 2)
+			return;
+		// min
+		splited_str2 = split(splited_str[0], ' ');
+		if (splited_str2.size() < 3)
+			return;
+		emitter_data.initial_size[0].x = stof(splited_str2[0]);
+		emitter_data.initial_size[0].y = stof(splited_str2[1]);
+		emitter_data.initial_size[0].z = stof(splited_str2[2]);
+		// max
+		splited_str2 = split(splited_str[1], ' ');
+		if (splited_str2.size() < 3)
+			return;
+		emitter_data.initial_size[1].x = stof(splited_str2[0]);
+		emitter_data.initial_size[1].y = stof(splited_str2[1]);
+		emitter_data.initial_size[1].z = stof(splited_str2[2]);
+	}
+
+	// initial_position
+	{
+		splited_str = split(effect->GetValue("initial_position"), '~');
+		if (splited_str.size() < 2)
+			return;
+		// min
+		splited_str2 = split(splited_str[0], ' ');
+		if (splited_str2.size() < 3)
+			return;
+		emitter_data.initial_position[0].x = stof(splited_str2[0]);
+		emitter_data.initial_position[0].y = stof(splited_str2[1]);
+		emitter_data.initial_position[0].z = stof(splited_str2[2]);
+		// max
+		splited_str2 = split(splited_str[1], ' ');
+		if (splited_str2.size() < 3)
+			return;
+		emitter_data.initial_position[1].x = stof(splited_str2[0]);
+		emitter_data.initial_position[1].y = stof(splited_str2[1]);
+		emitter_data.initial_position[1].z = stof(splited_str2[2]);
+	}
+
+	// size_per_lifetime
+	{
+		splited_str = split(effect->GetValue("size_per_lifetime"), '~');
+		if (splited_str.size() < 2)
+			return;
+		// min
+		splited_str2 = split(splited_str[0], ' ');
+		if (splited_str2.size() < 3)
+			return;
+		emitter_data.size_per_lifetime[0].x = stof(splited_str2[0]);
+		emitter_data.size_per_lifetime[0].y = stof(splited_str2[1]);
+		emitter_data.size_per_lifetime[0].z = stof(splited_str2[2]);
+		// max
+		splited_str2 = split(splited_str[1], ' ');
+		if (splited_str2.size() < 3)
+			return;
+		emitter_data.size_per_lifetime[1].x = stof(splited_str2[0]);
+		emitter_data.size_per_lifetime[1].y = stof(splited_str2[1]);
+		emitter_data.size_per_lifetime[1].z = stof(splited_str2[2]);
+	}
+
+	// rotation_per_lifetime
+	{
+		splited_str = split(effect->GetValue("rotation_per_lifetime"), ' ');
+		if (splited_str.size() < 2)
+			return;
+		emitter_data.rotation_per_lifetime[0] = stof(splited_str[0]);
+		emitter_data.rotation_per_lifetime[1] = stof(splited_str[1]);
+	}
+
+	// velocity_per_lifetime
+	{
+		splited_str = split(effect->GetValue("velocity_per_lifetime"), '~');
+		if (splited_str.size() < 2)
+			return;
+		// min
+		splited_str2 = split(splited_str[0], ' ');
+		if (splited_str2.size() < 3)
+			return;
+		emitter_data.velocity_per_lifetime[0].x = stof(splited_str2[0]);
+		emitter_data.velocity_per_lifetime[0].y = stof(splited_str2[1]);
+		emitter_data.velocity_per_lifetime[0].z = stof(splited_str2[2]);
+		// max
+		splited_str2 = split(splited_str[1], ' ');
+		if (splited_str2.size() < 3)
+			return;
+		emitter_data.velocity_per_lifetime[1].x = stof(splited_str2[0]);
+		emitter_data.velocity_per_lifetime[1].y = stof(splited_str2[1]);
+		emitter_data.velocity_per_lifetime[1].z = stof(splited_str2[2]);
+	}
+
+	emitter_data.vs_id		= effect->GetValue("vs_id");
+	emitter_data.geo_id		= effect->GetValue("geo_id");
+	emitter_data.ps_id		= effect->GetValue("ps_id");
+
+	type_ = EMITTER_TAB;
 }

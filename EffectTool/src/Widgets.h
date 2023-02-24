@@ -9,7 +9,7 @@ namespace KGCA41B
 		DEFAULT_TAB = 0,
 		UV_TAB = 1,
 		TEX_TAB = 2,
-		PARTICLE_TAB = 3,
+		EMITTER_TAB = 3,
 	};
 
 	class WG_MainMenu : public KGCA41B::GuiWidget
@@ -28,7 +28,7 @@ namespace KGCA41B
 		void	FileBrowser();
 		void	UVSpriteBoard();
 		void	TexSpriteBoard();
-		void	ParticlesBoard();
+		void	EmitterBoard();
 		void	SelectBlendOptions();
 		void	SelectFrame(int& max_frame, int& cur_frame);
 		void	SelectUV(vector<pair<POINT, POINT>>& list, int& max_frame);
@@ -40,7 +40,7 @@ namespace KGCA41B
 	private:
 		void	SaveUVSprite(string name);
 		void	SaveTexSprite(string name);
-		void	SaveParticles();
+		void	SaveEmitter(string name);
 
 	private:
 		E_EffectToolTab		type_;
@@ -50,6 +50,7 @@ namespace KGCA41B
 		Emitter			emitter_data;
 	public:
 		void LoadingSpriteData(string path);
+		void LoadingEmitterData(string path);
 	};
 }
 
