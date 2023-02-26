@@ -1,9 +1,6 @@
 #pragma once
 #include "Engine_include.h"
 #include "Widgets.h"
-#include "FX_Particles.h"
-#include "FX_Particles.h"
-#include "FX_Particles.h"
 
 namespace KGCA41B
 {

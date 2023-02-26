@@ -14,6 +14,6 @@ float4 PS(VS_OUT input) : SV_Target
 {
 	// Tex
 	float4 tex_color = g_txTex.Sample(g_SampleWrap, input.t);
-
-	return tex_color;
+	float4 final_color = tex_color * input.c;
+	return final_color;
 }
