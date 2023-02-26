@@ -363,6 +363,12 @@ void WG_EffectWindow::EmitterBoard()
 	ImGui::SetNextItemWidth(150.0f);
 	ImGui::InputFloat3("Size Max", (float*)&emitter_data.initial_size[MAX], "%.1f");
 
+	// Initial Rotation
+	ImGui::Text("Initial Rotation (angle)");
+	ImGui::SetNextItemWidth(50.0f);
+	ImGui::InputFloat("Rot Min", &emitter_data.initial_rotation[MIN]);
+	ImGui::SetNextItemWidth(50.0f);
+	ImGui::InputFloat("Rot Max", &emitter_data.initial_rotation[MAX]);
 
 	// Initial Position
 	ImGui::Text("Initial Position (x,y,z)");
@@ -370,6 +376,13 @@ void WG_EffectWindow::EmitterBoard()
 	ImGui::InputFloat3("Pos Min", (float*)&emitter_data.initial_position[MIN], "%.1f");
 	ImGui::SetNextItemWidth(150.0f);
 	ImGui::InputFloat3("Pos Max", (float*)&emitter_data.initial_position[MAX], "%.1f");
+
+	// Initial Velocity
+	ImGui::Text("Initial Velocity (x,y,z)");
+	ImGui::SetNextItemWidth(150.0f);
+	ImGui::InputFloat3("Vel Min", (float*)&emitter_data.initial_velocity[MIN], "%.1f");
+	ImGui::SetNextItemWidth(150.0f);
+	ImGui::InputFloat3("Vel Max", (float*)&emitter_data.initial_velocity[MAX], "%.1f");
 
 
 	// Size Per lifetime
@@ -388,11 +401,11 @@ void WG_EffectWindow::EmitterBoard()
 	ImGui::InputFloat("Rot per life Max", &emitter_data.rotation_per_lifetime[MAX]);
 
 	// Velocity Per lifetime
-	ImGui::Text("Velocity per lifetime (x,y,z)");
+	ImGui::Text("Accelation per lifetime (x,y,z)");
 	ImGui::SetNextItemWidth(150.0f);
-	ImGui::InputFloat3("Vel per Life Min", (float*)&emitter_data.velocity_per_lifetime[MIN], "%.1f");
+	ImGui::InputFloat3("Acc per Life Min", (float*)&emitter_data.accelation_per_lifetime[MIN], "%.1f");
 	ImGui::SetNextItemWidth(150.0f);
-	ImGui::InputFloat3("Vel per Life Max", (float*)&emitter_data.velocity_per_lifetime[MAX], "%.1f");
+	ImGui::InputFloat3("Acc per Life Max", (float*)&emitter_data.accelation_per_lifetime[MAX], "%.1f");
 
 	// Shader Selection
 	SelectVertexShader(emitter_data.vs_id);
@@ -783,11 +796,14 @@ void WG_EffectWindow::SaveEmitter(string name)
 	sheet->AddCategory("life_time");
 
 	sheet->AddCategory("initial_size");
+	sheet->AddCategory("initial_rotation");
 	sheet->AddCategory("initial_position");
+
+	sheet->AddCategory("initial_velocity");
 
 	sheet->AddCategory("size_per_lifetime");
 	sheet->AddCategory("rotation_per_lifetime");
-	sheet->AddCategory("velocity_per_lifetime");
+	sheet->AddCategory("accelation_per_lifetime");
 
 	sheet->AddCategory("vs_id");
 	sheet->AddCategory("geo_id");
@@ -819,10 +835,19 @@ void WG_EffectWindow::SaveEmitter(string name)
 		+ to_string(emitter_data.initial_size[1].x) + " " + to_string(emitter_data.initial_size[1].y) + " " + to_string(emitter_data.initial_size[1].z);
 	effect->SetValue("initial_size", fmt);
 
+	// initial_rotation
+	fmt = to_string(emitter_data.initial_rotation[0]) + " " + to_string(emitter_data.initial_rotation[1]);
+	effect->SetValue("initial_rotation", fmt);
+
 	// initial_position
 	fmt = to_string(emitter_data.initial_position[0].x) + " " + to_string(emitter_data.initial_position[0].y) + " " + to_string(emitter_data.initial_position[0].z) + "~"
 		+ to_string(emitter_data.initial_position[1].x) + " " + to_string(emitter_data.initial_position[1].y) + " " + to_string(emitter_data.initial_position[1].z);
 	effect->SetValue("initial_position", fmt);
+
+	// initial_velocity
+	fmt = to_string(emitter_data.initial_velocity[0].x) + " " + to_string(emitter_data.initial_velocity[0].y) + " " + to_string(emitter_data.initial_velocity[0].z) + "~"
+		+ to_string(emitter_data.initial_velocity[1].x) + " " + to_string(emitter_data.initial_velocity[1].y) + " " + to_string(emitter_data.initial_velocity[1].z);
+	effect->SetValue("initial_velocity", fmt);
 
 	// size_per_lifetime
 	fmt = to_string(emitter_data.size_per_lifetime[0].x) + " " + to_string(emitter_data.size_per_lifetime[0].y) + " " + to_string(emitter_data.size_per_lifetime[0].z) + "~"
@@ -831,10 +856,10 @@ void WG_EffectWindow::SaveEmitter(string name)
 	// rotation_per_lifetime
 	fmt = to_string(emitter_data.rotation_per_lifetime[0]) + " " + to_string(emitter_data.rotation_per_lifetime[1]);
 	effect->SetValue("rotation_per_lifetime", fmt);
-	// velocity_per_lifetime
-	fmt = to_string(emitter_data.velocity_per_lifetime[0].x) + " " + to_string(emitter_data.velocity_per_lifetime[0].y) + " " + to_string(emitter_data.velocity_per_lifetime[0].z) + "~"
-		+ to_string(emitter_data.velocity_per_lifetime[1].x) + " " + to_string(emitter_data.velocity_per_lifetime[1].y) + " " + to_string(emitter_data.velocity_per_lifetime[1].z);
-	effect->SetValue("velocity_per_lifetime", fmt);
+	// accelation_per_lifetime
+	fmt = to_string(emitter_data.accelation_per_lifetime[0].x) + " " + to_string(emitter_data.accelation_per_lifetime[0].y) + " " + to_string(emitter_data.accelation_per_lifetime[0].z) + "~"
+		+ to_string(emitter_data.accelation_per_lifetime[1].x) + " " + to_string(emitter_data.accelation_per_lifetime[1].y) + " " + to_string(emitter_data.accelation_per_lifetime[1].z);
+	effect->SetValue("accelation_per_lifetime", fmt);
 
 	// vs_id
 	effect->SetValue("vs_id", emitter_data.vs_id);
@@ -1015,7 +1040,6 @@ void WG_EffectWindow::LoadingEmitterData(string path)
 		emitter_data.color.z = stof(splited_str[2]);
 		emitter_data.color.w = stof(splited_str[3]);
 	}
-	
 
 	// life_time
 	{
@@ -1025,7 +1049,6 @@ void WG_EffectWindow::LoadingEmitterData(string path)
 		emitter_data.life_time[0] = stof(splited_str[0]);
 		emitter_data.life_time[1] = stof(splited_str[1]);
 	}
-	
 
 	// initial_size
 	{
@@ -1048,6 +1071,15 @@ void WG_EffectWindow::LoadingEmitterData(string path)
 		emitter_data.initial_size[1].z = stof(splited_str2[2]);
 	}
 
+	// initial_rotation
+	{
+		splited_str = split(effect->GetValue("initial_rotation"), ' ');
+		if (splited_str.size() < 2)
+			return;
+		emitter_data.initial_rotation[0] = stof(splited_str[0]);
+		emitter_data.initial_rotation[1] = stof(splited_str[1]);
+	}
+
 	// initial_position
 	{
 		splited_str = split(effect->GetValue("initial_position"), '~');
@@ -1067,6 +1099,27 @@ void WG_EffectWindow::LoadingEmitterData(string path)
 		emitter_data.initial_position[1].x = stof(splited_str2[0]);
 		emitter_data.initial_position[1].y = stof(splited_str2[1]);
 		emitter_data.initial_position[1].z = stof(splited_str2[2]);
+	}
+
+	// initial_velocity
+	{
+		splited_str = split(effect->GetValue("initial_velocity"), '~');
+		if (splited_str.size() < 2)
+			return;
+		// min
+		splited_str2 = split(splited_str[0], ' ');
+		if (splited_str2.size() < 3)
+			return;
+		emitter_data.initial_velocity[0].x = stof(splited_str2[0]);
+		emitter_data.initial_velocity[0].y = stof(splited_str2[1]);
+		emitter_data.initial_velocity[0].z = stof(splited_str2[2]);
+		// max
+		splited_str2 = split(splited_str[1], ' ');
+		if (splited_str2.size() < 3)
+			return;
+		emitter_data.initial_velocity[1].x = stof(splited_str2[0]);
+		emitter_data.initial_velocity[1].y = stof(splited_str2[1]);
+		emitter_data.initial_velocity[1].z = stof(splited_str2[2]);
 	}
 
 	// size_per_lifetime
@@ -1099,25 +1152,25 @@ void WG_EffectWindow::LoadingEmitterData(string path)
 		emitter_data.rotation_per_lifetime[1] = stof(splited_str[1]);
 	}
 
-	// velocity_per_lifetime
+	// accelation_per_lifetime
 	{
-		splited_str = split(effect->GetValue("velocity_per_lifetime"), '~');
+		splited_str = split(effect->GetValue("accelation_per_lifetime"), '~');
 		if (splited_str.size() < 2)
 			return;
 		// min
 		splited_str2 = split(splited_str[0], ' ');
 		if (splited_str2.size() < 3)
 			return;
-		emitter_data.velocity_per_lifetime[0].x = stof(splited_str2[0]);
-		emitter_data.velocity_per_lifetime[0].y = stof(splited_str2[1]);
-		emitter_data.velocity_per_lifetime[0].z = stof(splited_str2[2]);
+		emitter_data.accelation_per_lifetime[0].x = stof(splited_str2[0]);
+		emitter_data.accelation_per_lifetime[0].y = stof(splited_str2[1]);
+		emitter_data.accelation_per_lifetime[0].z = stof(splited_str2[2]);
 		// max
 		splited_str2 = split(splited_str[1], ' ');
 		if (splited_str2.size() < 3)
 			return;
-		emitter_data.velocity_per_lifetime[1].x = stof(splited_str2[0]);
-		emitter_data.velocity_per_lifetime[1].y = stof(splited_str2[1]);
-		emitter_data.velocity_per_lifetime[1].z = stof(splited_str2[2]);
+		emitter_data.accelation_per_lifetime[1].x = stof(splited_str2[0]);
+		emitter_data.accelation_per_lifetime[1].y = stof(splited_str2[1]);
+		emitter_data.accelation_per_lifetime[1].z = stof(splited_str2[2]);
 	}
 
 	emitter_data.vs_id		= effect->GetValue("vs_id");
