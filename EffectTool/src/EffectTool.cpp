@@ -10,7 +10,6 @@ void EffectTool::OnInit()
 	GUI->AddWidget("MainMenu", &tool_window_);
 	DATA->Init("D:/Data");
 	RESOURCE->Init("D:/Contents"); 
-	DINPUT->Init(ENGINE->GetWindowHandle(), ENGINE->GetInstanceHandle());
 
 	RENDER_TARGET->Init("BackBuffer");
 
@@ -28,15 +27,13 @@ void EffectTool::OnInit()
 	debug_camera_.speed = 10;
 	debug_camera_.tag = "Player";
 
-	reg_effect_tool_.emplace<Camera>(player_, debug_camera_);
+	reg_effect_tool_.emplace<C_Camera>(player_, debug_camera_);
 
-	debug_input_.tag = "Player";
-	reg_effect_tool_.emplace<InputMapping>(player_, debug_input_);
 
 	sys_camera_.TargetTag(reg_effect_tool_, "Player");
 	sys_camera_.OnCreate(reg_effect_tool_);
-	sys_input_.OnCreate(reg_effect_tool_);
 	sys_render_.OnCreate(reg_effect_tool_);
+	sys_effect_.OnCreate(reg_effect_tool_);
 
 	stage_.OnInit(reg_effect_tool_, {});
 
@@ -45,32 +42,14 @@ void EffectTool::OnInit()
 
 void EffectTool::OnUpdate()
 {
-	sys_input_.OnUpdate(reg_effect_tool_);
 	sys_camera_.OnUpdate(reg_effect_tool_);
-
+	sys_effect_.OnUpdate(reg_effect_tool_);
 	stage_.OnUpdate(reg_effect_tool_);
-
 	effect_.OnUpdate(reg_effect_tool_);
 }
 
 void EffectTool::OnRender()
 {
-	// Z 버퍼 비교 & Z 버퍼 쓰기
-	if (bZbufferComp && bZbufferWrite)
-		DX11APP->GetDeviceContext()->OMSetDepthStencilState(DXStates::ds_defalut(), 1);
-	else if (bZbufferComp)
-		DX11APP->GetDeviceContext()->OMSetDepthStencilState(DXStates::ds_depth_enable_no_write(), 1);
-	else
-		DX11APP->GetDeviceContext()->OMSetDepthStencilState(DXStates::ds_depth_disable(), 1);
-
-	// 알파 블랜딩
-	if (bAlphaBlending)
-		DX11APP->GetDeviceContext()->OMSetBlendState(DXStates::bs_default(), 0, -1);
-	else
-		DX11APP->GetDeviceContext()->OMSetBlendState(0, 0, -1);
-
-	// 알파 테스팅?
-
 	// 와이어 프레임 체크
 	if (bWireFrame)
 		DX11APP->GetDeviceContext()->RSSetState(DXStates::rs_wireframe_cull_none());
@@ -86,9 +65,14 @@ void EffectTool::OnRelease()
 
 }
 
-void KGCA41B::EffectTool::AddEmitter(Emitter emitter)
+void KGCA41B::EffectTool::AddEmitter(shared_ptr<Emitter> emitter)
 {
 	
 	effect_.AddEmitter(reg_effect_tool_, emitter);
+}
+
+void KGCA41B::EffectTool::ResetEmitter()
+{
+	effect_.ResetEmitter(reg_effect_tool_);
 }
 

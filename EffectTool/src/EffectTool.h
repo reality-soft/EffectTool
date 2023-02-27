@@ -14,11 +14,10 @@ namespace KGCA41B
 	public:
 		RenderSystem		sys_render_;
 		CameraSystem		sys_camera_;
-		InputSystem			sys_input_;
+		EffectSystem		sys_effect_;
 	public:
 		entt::entity		player_;
-		Camera				debug_camera_;
-		InputMapping		debug_input_;
+		C_Camera			debug_camera_;
 	public:
 		WG_MainMenu			tool_window_;
 
@@ -26,9 +25,6 @@ namespace KGCA41B
 		StageActor			stage_;
 
 	public:
-		bool bZbufferComp = false;
-		bool bZbufferWrite = false;
-		bool bAlphaBlending = false;
 		bool bWireFrame = false;
 
 	public:
@@ -41,6 +37,7 @@ namespace KGCA41B
 		virtual void OnRelease();
 
 	public:
-		void AddEmitter(Emitter emitter);
+		void AddEmitter(shared_ptr<Emitter> emitter);
+		void ResetEmitter();
 	};
 }
