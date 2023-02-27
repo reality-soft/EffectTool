@@ -1,29 +1,35 @@
-#include "EffectHeader.hlsli"
-
-cbuffer cb_data : register(b0)
+cbuffer cb_viewproj : register(b0)
 {
-	matrix g_matWorld;
+	matrix g_mat_view;
+	matrix g_mat_proj;
+}
+
+cbuffer cb_data : register(b1)
+{
+	matrix g_mat_world;
 };
 
-cbuffer cb_viewproj : register(b1)
+struct VS_IN
 {
-	matrix g_matView;
-	matrix g_matProj;
-}
+	float3 p : F3_POSITION;
+	float4 c : F4_COLOR;
+	float2 t : F2_TEXTURE;
+};
+
+struct VS_OUT
+{
+	float4 p		: SV_POSITION;
+	float4 c		: COLOR0;
+	float2 t		: TEXCOORD0;
+};
 
 VS_OUT VS(VS_IN input)
 {
 	VS_OUT output = (VS_OUT)0;
 
-	float4 vLocal = float4(input.p, 1.0f);
-	float4 vWorld = mul(vLocal, g_matWorld);
-	float4 vView = mul(vWorld, g_matView);
-	float4 vProj = mul(vView, g_matProj);
-
-	output.p = vProj;
-	output.n = input.n;
-	output.c = input.c;
-	output.t = input.t;
+	output.p		= float4(input.p, 1.0f);
+	output.c		= input.c;
+	output.t		= input.t;
 
 	return output;
 }
