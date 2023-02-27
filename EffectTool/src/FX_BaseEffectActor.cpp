@@ -7,12 +7,12 @@ void KGCA41B::FX_BaseEffectActor::OnInit(entt::registry& registry, AABBShape col
 	entity_id_ = registry.create();
 	//this->node_num_ = SpacePartition::GetInst()->UpdateNodeObjectBelongs(0, collision_box_, entity_id_);
 
-	Transform transform;
+	C_Transform transform;
 	transform.world = XMMatrixIdentity();
 	transform.local = XMMatrixIdentity();
-	registry.emplace<Transform>(entity_id_, transform);
+	registry.emplace<C_Transform>(entity_id_, transform);
 
-	transform_tree_.root_node = make_shared<TransformTreeNode>(TYPE_ID(KGCA41B::Transform));
+	transform_tree_.root_node = make_shared<TransformTreeNode>(TYPE_ID(KGCA41B::C_Transform));
 
 	transform_tree_.root_node->OnUpdate(registry, entity_id_);
 }
