@@ -33,6 +33,16 @@ void WG_MainMenu::Render()
 		}
 	}
 	ImGui::EndMainMenuBar();
+
+	ImGui::Begin("Render Option Window", &open_);
+	static bool bWireFrame = false;
+
+	ImGui::Checkbox("WireFrame", &bWireFrame);
+
+	auto scene = (EffectTool*)SCENE->LoadScene("EffectTool");
+	scene->bWireFrame = bWireFrame;
+
+	ImGui::End();
 }
 
 void WG_EffectWindow::Update()
@@ -52,21 +62,32 @@ void WG_EffectWindow::Render()
 			{
 				if (ImGui::MenuItem("UV Sprite"))
 				{
-					type_ = UV_TAB;
+					type_ = UV_SPRITE;
 				}
 				if (ImGui::MenuItem("Texture Sprite"))
 				{
-					type_ = TEX_TAB;
+					type_ = TEX_SPRITE;
 				}
-				if (ImGui::MenuItem("Emitter"))
+				if (ImGui::MenuItem("Sprite Emitter"))
 				{
-					type_ = EMITTER_TAB;
+					type_ = SPRITE_EMITTER;
+				}
+				if (ImGui::MenuItem("Point Emitter"))
+				{
+					type_ = POINT_EMITTER;
+				}
+				if (ImGui::MenuItem("Effect"))
+				{
+					type_ = EFFECT;
 				}
 				ImGui::EndMenu();
 			}
-			FileBrowser();
+			LoadingData();
 		}
 		ImGui::EndMenuBar();
+
+
+		static char particle_name[255] = { 0, };
 
 		switch (type_)
 		{
@@ -85,17 +106,66 @@ void WG_EffectWindow::Render()
 			TexSpriteBoard();
 		}
 		break;
-		case EMITTER:
+		case SPRITE_EMITTER:
 		{
-			EmitterBoard();
-		}
-		break;
+			SpriteEmitterBoard(sprite_emitter_data);
+
+			ImGui::SetNextItemWidth(TEXT_WIDTH);
+			ImGui::InputTextWithHint("sprite name", "Name", particle_name, IM_ARRAYSIZE(particle_name));
+			if (ImGui::Button("Save"))
+			{
+				SaveSpriteEmitter(particle_name);
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Reset"))
+			{
+				auto scene = (EffectTool*)SCENE->LoadScene("EffectTool");
+				if (scene)
+					scene->ResetEmitter();
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Render"))
+			{
+				auto scene = (EffectTool*)SCENE->LoadScene("EffectTool");
+				if (scene)
+					scene->AddEmitter(make_shared<SpriteEmitter>(sprite_emitter_data));
+			}
+		}break;
+		case POINT_EMITTER:
+		{
+			PointEmitterBoard(point_emitter_data);
+
+			ImGui::SetNextItemWidth(TEXT_WIDTH);
+			ImGui::InputTextWithHint("sprite name", "Name", particle_name, IM_ARRAYSIZE(particle_name));
+			if (ImGui::Button("Save"))
+			{
+				SaveSpriteEmitter(particle_name);
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Reset"))
+			{
+				auto scene = (EffectTool*)SCENE->LoadScene("EffectTool");
+				if (scene)
+					scene->AddEmitter(make_shared<SpriteEmitter>(sprite_emitter_data));
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Render"))
+			{
+				auto scene = (EffectTool*)SCENE->LoadScene("EffectTool");
+				if (scene)
+					scene->ResetEmitter();
+			}
+		}break;
+		case EFFECT:
+		{
+			EffectBoard();
+		}break;
 		}
 	}
 	ImGui::End();
 }
 
-void WG_EffectWindow::FileBrowser()
+void WG_EffectWindow::LoadingData()
 {
 	static ImGui::FileBrowser fileDialog;
 	static int type = 0;
@@ -113,6 +183,12 @@ void WG_EffectWindow::FileBrowser()
 			fileDialog.Open();
 			fileDialog.SetTypeFilters({ ".csv" });
 		}
+		if (ImGui::MenuItem("Load Effect"))
+		{
+			type = 3;
+			fileDialog.Open();
+			fileDialog.SetTypeFilters({ ".csv" });
+		}
 		ImGui::EndMenu();
 	}
 		
@@ -121,10 +197,20 @@ void WG_EffectWindow::FileBrowser()
 	if (fileDialog.HasSelected())
 	{
 		if (type == 1)
+		{
 			LoadingSpriteData(fileDialog.GetSelected().string());
+		}
 		else if (type == 2)
-			LoadingEmitterData(fileDialog.GetSelected().string());
-
+		{
+			LoadingEmitterData(fileDialog.GetSelected().string(), sprite_emitter_data);
+			type_ = SPRITE_EMITTER;
+		}
+		else if (type == 3)
+		{
+			emitter_map.clear();
+			LoadingEffectData(fileDialog.GetSelected().string());
+			type_ = EFFECT;
+		}
 		fileDialog.ClearSelected();
 		fileDialog.Close();
 	}
@@ -280,22 +366,20 @@ void WG_EffectWindow::TexSpriteBoard()
 	}
 }
 
-void WG_EffectWindow::EmitterBoard()
+void WG_EffectWindow::SpriteEmitterBoard(SpriteEmitter& emitter)
 {
-	static char particle_name[255] = { 0, };
 	static int cur_frame	= 1;
 	static float timer		= 1.0f;
 
-
 	// Render Selected Sprite
-	auto sprite = RESOURCE->UseResource<Sprite>(emitter_data.sprite_id);
+	auto sprite = RESOURCE->UseResource<Sprite>(emitter.sprite_id);
 	if (sprite)
 	{
 		Texture* tex = nullptr;
 		ImVec2 img_size = { 200, 200 };
 		// 스프라이트 타입에 따라 다르게 랜더링
 		// UV Sprite
-		if (sprite->type == UV)
+		if (sprite->type == UV_SPRITE)
 		{
 			UVSprite* uv_sprite = (UVSprite*)sprite;
 			tex = RESOURCE->UseResource<Texture>(uv_sprite->tex_id);
@@ -317,7 +401,7 @@ void WG_EffectWindow::EmitterBoard()
 			ImGui::Image((void*)tex->srv.Get(), img_size, start, end);
 		}
 		// Texture Sprite
-		else if (sprite->type == TEX)
+		else if (sprite->type == TEX_SPRITE)
 		{
 			TextureSprite* tex_sprite = (TextureSprite*)sprite;
 			// 프레임 처리
@@ -336,126 +420,414 @@ void WG_EffectWindow::EmitterBoard()
 
 	// Sprite_id or Something?
 	ImGui::Text("Sprite");
-	SelectSprite(emitter_data.sprite_id);
+	SelectSprite(emitter.sprite_id);
 
-	// Particle Count
-	ImGui::Text("Emit per Second");
-	ImGui::SetNextItemWidth(150.0f);
-	ImGui::InputInt("Emit per Second", &emitter_data.emit_per_second);
+	ImGui::Text("Emit Mode");
+	static int mode = 0;
+	mode = emitter.b_emit_once_or_per_second;
+	if (ImGui::RadioButton("Once", mode == false))
+	{ 
+		mode = emitter.b_emit_once_or_per_second;
+		emitter.b_emit_once_or_per_second = false;
+	} 
+	ImGui::SameLine();
+	if (ImGui::RadioButton("Per Second", mode == true))
+	{ 
+		mode = emitter.b_emit_once_or_per_second;
+		emitter.b_emit_once_or_per_second = true;
+	}
+	
+	switch (mode)
+	{
+		case false:
+			ImGui::SetNextItemWidth(150.0f);
+			ImGui::InputInt("Emit Once", &emitter.emit_partice_once);
+			break;
+		case true:
+			ImGui::SetNextItemWidth(150.0f);
+			ImGui::InputInt("Emit per Second", &emitter.emit_per_second);
+	}
 
 	// Color
 	ImGui::Text("Particle Color");
 	static ImVec4 color;
-	ImGui::ColorEdit3("Color", (float*)&emitter_data.color);
-	emitter_data.color.w = 1.0f;
+	ImGui::ColorEdit3("Color", (float*)&emitter.color);
+	emitter.color.w = 1.0f;
 
 	// Life Time
 	ImGui::Text("Life Time (seconds)");
 	ImGui::SetNextItemWidth(50.0f);
-	ImGui::InputFloat("Life Time Min", &emitter_data.life_time[MIN]);
+	ImGui::InputFloat("Life Time Min", &emitter.life_time[MIN]);
 	ImGui::SetNextItemWidth(50.0f);
-	ImGui::InputFloat("Life Time Max", &emitter_data.life_time[MAX]);
+	ImGui::InputFloat("Life Time Max", &emitter.life_time[MAX]);
 
 	// Initial Size
 	ImGui::Text("Initial Size (x,y,z)");
 	ImGui::SetNextItemWidth(150.0f);
-	ImGui::InputFloat3("Size Min", (float*)&emitter_data.initial_size[MIN], "%.1f");
+	ImGui::InputFloat3("Size Min", (float*)&emitter.initial_size[MIN], "%.2f");
 	ImGui::SetNextItemWidth(150.0f);
-	ImGui::InputFloat3("Size Max", (float*)&emitter_data.initial_size[MAX], "%.1f");
+	ImGui::InputFloat3("Size Max", (float*)&emitter.initial_size[MAX], "%.2f");
 
 	// Initial Rotation
 	ImGui::Text("Initial Rotation (angle)");
 	ImGui::SetNextItemWidth(50.0f);
-	ImGui::InputFloat("Rot Min", &emitter_data.initial_rotation[MIN]);
+	ImGui::InputFloat("Rot Min", &emitter.initial_rotation[MIN]);
 	ImGui::SetNextItemWidth(50.0f);
-	ImGui::InputFloat("Rot Max", &emitter_data.initial_rotation[MAX]);
+	ImGui::InputFloat("Rot Max", &emitter.initial_rotation[MAX]);
 
 	// Initial Position
 	ImGui::Text("Initial Position (x,y,z)");
 	ImGui::SetNextItemWidth(150.0f);
-	ImGui::InputFloat3("Pos Min", (float*)&emitter_data.initial_position[MIN], "%.1f");
+	ImGui::InputFloat3("Pos Min", (float*)&emitter.initial_position[MIN], "%.2f");
 	ImGui::SetNextItemWidth(150.0f);
-	ImGui::InputFloat3("Pos Max", (float*)&emitter_data.initial_position[MAX], "%.1f");
+	ImGui::InputFloat3("Pos Max", (float*)&emitter.initial_position[MAX], "%.2f");
 
 	// Initial Velocity
 	ImGui::Text("Initial Velocity (x,y,z)");
 	ImGui::SetNextItemWidth(150.0f);
-	ImGui::InputFloat3("Vel Min", (float*)&emitter_data.initial_velocity[MIN], "%.1f");
+	ImGui::InputFloat3("Vel Min", (float*)&emitter.initial_velocity[MIN], "%.2f");
 	ImGui::SetNextItemWidth(150.0f);
-	ImGui::InputFloat3("Vel Max", (float*)&emitter_data.initial_velocity[MAX], "%.1f");
+	ImGui::InputFloat3("Vel Max", (float*)&emitter.initial_velocity[MAX], "%.2f");
 
 
 	// Size Per lifetime
 	ImGui::Text("Size per lifetime (x,y,z)");
 	ImGui::SetNextItemWidth(150.0f);
-	ImGui::InputFloat3("Size per Life Min", (float*)&emitter_data.size_per_lifetime[MIN], "%.1f");
+	ImGui::InputFloat3("Size per Life Min", (float*)&emitter.size_per_lifetime[MIN], "%.2f");
 	ImGui::SetNextItemWidth(150.0f);
-	ImGui::InputFloat3("Size per Life Max", (float*)&emitter_data.size_per_lifetime[MAX], "%.1f");
+	ImGui::InputFloat3("Size per Life Max", (float*)&emitter.size_per_lifetime[MAX], "%.2f");
 
 
 	// Rotation Per lifetime
 	ImGui::Text("Rotation Per lifetime (Angle)");
 	ImGui::SetNextItemWidth(50.0f);
-	ImGui::InputFloat("Rot per life Min", &emitter_data.rotation_per_lifetime[MIN]);
+	ImGui::InputFloat("Rot per life Min", &emitter.rotation_per_lifetime[MIN]);
 	ImGui::SetNextItemWidth(50.0f);
-	ImGui::InputFloat("Rot per life Max", &emitter_data.rotation_per_lifetime[MAX]);
+	ImGui::InputFloat("Rot per life Max", &emitter.rotation_per_lifetime[MAX]);
 
 	// Velocity Per lifetime
 	ImGui::Text("Accelation per lifetime (x,y,z)");
 	ImGui::SetNextItemWidth(150.0f);
-	ImGui::InputFloat3("Acc per Life Min", (float*)&emitter_data.accelation_per_lifetime[MIN], "%.1f");
+	ImGui::InputFloat3("Acc per Life Min", (float*)&emitter.accelation_per_lifetime[MIN], "%.2f");
 	ImGui::SetNextItemWidth(150.0f);
-	ImGui::InputFloat3("Acc per Life Max", (float*)&emitter_data.accelation_per_lifetime[MAX], "%.1f");
+	ImGui::InputFloat3("Acc per Life Max", (float*)&emitter.accelation_per_lifetime[MAX], "%.2f");
 
 	// Shader Selection
-	SelectVertexShader(emitter_data.vs_id);
-	SelectGeometryShader(emitter_data.geo_id);
-	SelectPixelShader(emitter_data.ps_id);
+	SelectVertexShader(emitter.vs_id);
+	SelectGeometryShader(emitter.geo_id);
+	SelectMaterial(emitter.mat_id);
 
-	SelectBlendOptions();
+	// BS, DS Selection
+	SelectBSOptions(emitter.bs_state);
+	SelectDSOptions(emitter.ds_state);
+}
 
+void WG_EffectWindow::PointEmitterBoard(PointEmitter& emitter)
+{
+	
+}
+
+void WG_EffectWindow::EffectBoard()
+{
+
+	// Emitter 리스트
+	static int item_current_idx = 0;
+	if (emitter_map.size() > 0)
+		item_current_idx = min(item_current_idx, (int)emitter_map.size() - 1);
+	else
+		item_current_idx = 0;
+
+	vector<string> emitter_vec;
+	shared_ptr<Emitter> cur_emitter;
+	{
+		
+		for (auto iter = emitter_map.begin(); iter != emitter_map.end(); ++iter)
+		{
+			emitter_vec.push_back(iter->first);
+		}
+
+		ImGui::SetNextItemWidth(LISTBOX_WIDTH);
+		if (ImGui::BeginListBox("Emitters"))
+		{
+			for (int n = 0; n < emitter_vec.size(); n++)
+			{
+				const bool is_selected = (item_current_idx == n);
+				if (ImGui::Selectable(emitter_vec[n].c_str(), is_selected))
+					item_current_idx = n;
+
+				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+				if (is_selected)
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndListBox();
+
+			if (emitter_vec.size() > 0)
+			{
+				auto select = emitter_vec[item_current_idx];
+
+				cur_emitter = emitter_map[select];
+			}
+			
+		}
+	}
+	
+	// Emitter 추가 / 제거
+	{
+		static ImGui::FileBrowser fileDialog;
+		if (ImGui::Button("Add"))
+		{
+			fileDialog.Open();
+			fileDialog.SetTypeFilters({ ".csv" });
+		}
+
+		fileDialog.Display();
+
+		if (fileDialog.HasSelected())
+		{
+			auto emitter = make_shared<SpriteEmitter>();
+			string path = fileDialog.GetSelected().string();
+			LoadingEmitterData(path, *emitter.get());
+
+			// 이름 파싱
+			auto splited_str = split(path, '\\');
+			auto strs = split(splited_str[max((int)splited_str.size() - 1, 0)], '.');
+			auto name = strs[0];
+
+			emitter_map.insert({ name, emitter });
+
+			fileDialog.ClearSelected();
+			fileDialog.Close();
+		}
+
+		ImGui::SameLine();
+		if (ImGui::Button("Delete"))
+		{
+			if (emitter_vec.size() > 0)
+			{
+				emitter_map.erase(emitter_vec[item_current_idx]);
+			}
+			
+		}
+	}
+	
+	// 세이브 / 랜더링
+	static char effect_name[255] = { 0, };
 	ImGui::SetNextItemWidth(TEXT_WIDTH);
-	ImGui::InputTextWithHint("sprite name", "Name", particle_name, IM_ARRAYSIZE(particle_name));
-	if (ImGui::Button("Save"))
+	ImGui::InputTextWithHint("Effect Name", "Name", effect_name, IM_ARRAYSIZE(effect_name));
+	if (ImGui::Button("Effect Save"))
 	{
-		SaveEmitter(particle_name);
-	}
-	ImGui::SameLine();
-	if (ImGui::Button("Reset"))
-	{
+		string sheetName = effect_name;
+		if (sheetName.size() == 0)
+			return;
 
+		auto sheet = DATA->AddNewSheet(sheetName);
+
+		for (auto pair : emitter_map)
+		{
+			auto effect = sheet->AddItem(pair.first);
+			auto emitter = (SpriteEmitter*)pair.second.get();
+
+			// 카테고리 추가
+			sheet->AddCategory("type");
+
+			sheet->AddCategory("sprite_id");
+
+			sheet->AddCategory("b_emit_once_or_per_second");
+			sheet->AddCategory("emit_partice_once");
+			sheet->AddCategory("emit_per_second");
+
+			sheet->AddCategory("color");
+
+			sheet->AddCategory("life_time");
+
+			sheet->AddCategory("initial_size");
+			sheet->AddCategory("initial_rotation");
+			sheet->AddCategory("initial_position");
+
+			sheet->AddCategory("initial_velocity");
+
+			sheet->AddCategory("size_per_lifetime");
+			sheet->AddCategory("rotation_per_lifetime");
+			sheet->AddCategory("accelation_per_lifetime");
+
+			sheet->AddCategory("vs_id");
+			sheet->AddCategory("geo_id");
+			sheet->AddCategory("mat_id");
+
+			sheet->AddCategory("BS");
+			sheet->AddCategory("DS");
+
+			// 값 추가
+
+			// type
+			effect->SetValue("type", to_string(SPRITE_EMITTER));
+
+			// sprite_id
+			effect->SetValue("sprite_id", emitter->sprite_id);
+
+			// b_emit_once_or_per_second
+			effect->SetValue("b_emit_once_or_per_second", to_string(emitter->b_emit_once_or_per_second));
+			// emit_per_second
+			effect->SetValue("emit_partice_once", to_string(emitter->emit_partice_once));
+			// emit_per_second
+			effect->SetValue("emit_per_second", to_string(emitter->emit_per_second));
+
+			string fmt = "";
+
+			// color
+			fmt = to_string(emitter->color.x) + " " + to_string(emitter->color.y) + " " + to_string(emitter->color.z) + " " + to_string(emitter->color.w);
+			effect->SetValue("color", fmt);
+
+			// life_time
+			fmt = to_string(emitter->life_time[0]) + " " + to_string(emitter->life_time[1]);
+			effect->SetValue("life_time", fmt);
+
+			// initial_size
+			fmt = to_string(emitter->initial_size[0].x) + " " + to_string(emitter->initial_size[0].y) + " " + to_string(emitter->initial_size[0].z) + "~"
+				+ to_string(emitter->initial_size[1].x) + " " + to_string(emitter->initial_size[1].y) + " " + to_string(emitter->initial_size[1].z);
+			effect->SetValue("initial_size", fmt);
+
+			// initial_rotation
+			fmt = to_string(emitter->initial_rotation[0]) + " " + to_string(emitter->initial_rotation[1]);
+			effect->SetValue("initial_rotation", fmt);
+
+			// initial_position
+			fmt = to_string(emitter->initial_position[0].x) + " " + to_string(emitter->initial_position[0].y) + " " + to_string(emitter->initial_position[0].z) + "~"
+				+ to_string(emitter->initial_position[1].x) + " " + to_string(emitter->initial_position[1].y) + " " + to_string(emitter->initial_position[1].z);
+			effect->SetValue("initial_position", fmt);
+
+			// initial_velocity
+			fmt = to_string(emitter->initial_velocity[0].x) + " " + to_string(emitter->initial_velocity[0].y) + " " + to_string(emitter->initial_velocity[0].z) + "~"
+				+ to_string(emitter->initial_velocity[1].x) + " " + to_string(emitter->initial_velocity[1].y) + " " + to_string(emitter->initial_velocity[1].z);
+			effect->SetValue("initial_velocity", fmt);
+
+			// size_per_lifetime
+			fmt = to_string(emitter->size_per_lifetime[0].x) + " " + to_string(emitter->size_per_lifetime[0].y) + " " + to_string(emitter->size_per_lifetime[0].z) + "~"
+				+ to_string(emitter->size_per_lifetime[1].x) + " " + to_string(emitter->size_per_lifetime[1].y) + " " + to_string(emitter->size_per_lifetime[1].z);
+			effect->SetValue("size_per_lifetime", fmt);
+			// rotation_per_lifetime
+			fmt = to_string(emitter->rotation_per_lifetime[0]) + " " + to_string(emitter->rotation_per_lifetime[1]);
+			effect->SetValue("rotation_per_lifetime", fmt);
+			// accelation_per_lifetime
+			fmt = to_string(emitter->accelation_per_lifetime[0].x) + " " + to_string(emitter->accelation_per_lifetime[0].y) + " " + to_string(emitter->accelation_per_lifetime[0].z) + "~"
+				+ to_string(emitter->accelation_per_lifetime[1].x) + " " + to_string(emitter->accelation_per_lifetime[1].y) + " " + to_string(emitter->accelation_per_lifetime[1].z);
+			effect->SetValue("accelation_per_lifetime", fmt);
+
+			// vs_id
+			effect->SetValue("vs_id", emitter->vs_id);
+			// geo_id
+			effect->SetValue("geo_id", emitter->geo_id);
+			// ps_id
+			effect->SetValue("mat_id", emitter->mat_id);
+
+
+			// BS
+			effect->SetValue("BS", to_string(emitter->bs_state));
+			// DS
+			effect->SetValue("DS", to_string(emitter->ds_state));
+
+		}
+		DATA->SaveSheetFile(sheetName);
 	}
-	ImGui::SameLine();
-	if (ImGui::Button("Render"))
+	if (ImGui::Button("Effect Render"))
 	{
 		auto scene = (EffectTool*)SCENE->LoadScene("EffectTool");
 		if (scene)
-			scene->AddEmitter(emitter_data);
+		{
+			scene->ResetEmitter();
+			for (auto pair : emitter_map)
+			{
+				pair.second->particles.clear();
+				scene->AddEmitter(pair.second);
+			}
+		}
+
+	}
+
+	// Emitter 수정
+	if (cur_emitter != nullptr)
+	{
+		SpriteEmitter* sprite_emitter = nullptr;
+		switch (cur_emitter->type)
+		{
+		case SPRITE_EMITTER:
+		{
+			sprite_emitter = (SpriteEmitter*)cur_emitter.get();
+			SpriteEmitterBoard(*sprite_emitter);
+			if (ImGui::Button("Emitter Render"))
+			{
+				auto scene = (EffectTool*)SCENE->LoadScene("EffectTool");
+				if (scene)
+				{
+					scene->ResetEmitter();
+					sprite_emitter->particles.clear();
+					scene->AddEmitter(make_shared<SpriteEmitter>(*sprite_emitter));
+				}
+
+			}
+		}
+		break;
+		case POINT_EMITTER:
+		{
+
+		}
+		break;
+		}
 	}
 }
 
-void WG_EffectWindow::SelectBlendOptions()
+void WG_EffectWindow::SelectBSOptions(E_EffectBS& bs_state)
 {
-	static bool bZbufferComp = false;
-	static bool bZbufferWrite = false;
-	static bool bAlphaBlending = false;
-	static bool bAlphaTesting = false;
-	static bool bWireFrame = false;
-	ImGui::Checkbox("Z buffer Comp", &bZbufferComp);
-	ImGui::SameLine();
-	ImGui::Checkbox("Z buffer Write", &bZbufferWrite);
-	ImGui::Checkbox("AlphaBlending", &bAlphaBlending);
-	ImGui::SameLine();
-	ImGui::Checkbox("AlphaTesting", &bAlphaTesting);
-	ImGui::Checkbox("WireFrame", &bWireFrame);
+	//static ImGuiComboFlags flags = 0;
+	//ImGui::CheckboxFlags("ImGuiComboFlags_PopupAlignLeft", &flags, ImGuiComboFlags_PopupAlignLeft);
 
-	auto scene = (EffectTool*)SCENE->LoadScene("EffectTool");
-	scene->bZbufferComp		= bZbufferComp;
-	scene->bZbufferWrite	= bZbufferWrite;
-	scene->bAlphaBlending	= bAlphaBlending;
-	scene->bWireFrame		= bWireFrame;
+	const char* items[] = { "DEFAULT_BS", "NO_BLEND", "ALPHA_BLEND", "DUALSOURCE_BLEND" };
+	static int item_current_idx = 0; // Here we store our selection data as an index.
+	item_current_idx = bs_state;
+	const char* combo_preview_value = items[item_current_idx];  // Pass in the preview value visible before opening the combo (it could be anything)
+	if (ImGui::BeginCombo("Blend State", combo_preview_value))
+	{
+		for (int n = 0; n < IM_ARRAYSIZE(items); n++)
+		{
+			const bool is_selected = (item_current_idx == n);
+			if (ImGui::Selectable(items[n], is_selected))
+				item_current_idx = n;
 
-	// 알파 테스팅?
+			// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+			if (is_selected)
+				ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndCombo();
+	}
+
+	bs_state = (E_EffectBS)item_current_idx;
+}
+
+void WG_EffectWindow::SelectDSOptions(E_EffectDS& ds_state)
+{
+	//static ImGuiComboFlags flags = 0;
+	//ImGui::CheckboxFlags("ImGuiComboFlags_PopupAlignLeft", &flags, ImGuiComboFlags_PopupAlignLeft);
+
+	const char* items[] = { "DEFAULT_NONE", "DEPTH_COMP_NOWRITE", "DEPTH_COMP_WRITE" };
+	static int item_current_idx = 0; // Here we store our selection data as an index.
+	item_current_idx = ds_state;
+	const char* combo_preview_value = items[item_current_idx];  // Pass in the preview value visible before opening the combo (it could be anything)
+	if (ImGui::BeginCombo("Depth Stencil State", combo_preview_value))
+	{
+		for (int n = 0; n < IM_ARRAYSIZE(items); n++)
+		{
+			const bool is_selected = (item_current_idx == n);
+			if (ImGui::Selectable(items[n], is_selected))
+				item_current_idx = n;
+
+			// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+			if (is_selected)
+				ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndCombo();
+	}
+
+	ds_state = (E_EffectDS)item_current_idx;
 }
 
 void WG_EffectWindow::SelectFrame(int& max_frame, int& cur_frame)
@@ -608,27 +980,27 @@ void WG_EffectWindow::SelectGeometryShader(string& id)
 	id = gs_vec[item_current_idx];
 }
 
-void WG_EffectWindow::SelectPixelShader(string& id)
+void WG_EffectWindow::SelectMaterial(string& id)
 {
 	static int item_current_idx = 0;
 
-	auto ps_set = RESOURCE->GetTotalPSID();
-	vector<string> ps_vec(ps_set.begin(), ps_set.end());
+	auto material_set = RESOURCE->GetTotalMATID();
+	vector<string> mat_vec(material_set.begin(), material_set.end());
 
 	// 위에서 설정된 ps_id가 있다면 그 값으로 item_current_idx 변경
-	for (int i = 0; i < ps_vec.size(); i++)
+	for (int i = 0; i < mat_vec.size(); i++)
 	{
-		if (ps_vec[i] == id)
+		if (mat_vec[i] == id)
 			item_current_idx = i;
 	}
 
 	ImGui::SetNextItemWidth(LISTBOX_WIDTH);
 	if (ImGui::BeginListBox("Pixel Shader"))
 	{
-		for (int n = 0; n < ps_vec.size(); n++)
+		for (int n = 0; n < mat_vec.size(); n++)
 		{
 			const bool is_selected = (item_current_idx == n);
-			if (ImGui::Selectable(ps_vec[n].c_str(), is_selected))
+			if (ImGui::Selectable(mat_vec[n].c_str(), is_selected))
 				item_current_idx = n;
 
 			// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
@@ -638,7 +1010,7 @@ void WG_EffectWindow::SelectPixelShader(string& id)
 		ImGui::EndListBox();
 	}
 
-	id = ps_vec[item_current_idx];
+	id = mat_vec[item_current_idx];
 }
 
 void WG_EffectWindow::SelectTexture(string& id)
@@ -709,6 +1081,16 @@ void WG_EffectWindow::SelectSprite(string& id)
 		id = sprite_id[item_current_idx];
 }
 
+void WG_EffectWindow::RenderWireFrame()
+{
+	static bool bWireFrame = false;
+
+	ImGui::Checkbox("WireFrame", &bWireFrame);
+
+	auto scene = (EffectTool*)SCENE->LoadScene("EffectTool");
+	scene->bWireFrame = bWireFrame;
+}
+
 void WG_EffectWindow::SaveUVSprite(string name)
 {
 	string sheetName = name;
@@ -774,7 +1156,7 @@ void WG_EffectWindow::SaveTexSprite(string name)
 	RESOURCE->SaveSprite(name, make_shared<TextureSprite>(tex_sprite_data));
 }
 
-void WG_EffectWindow::SaveEmitter(string name)
+void WG_EffectWindow::SaveSpriteEmitter(string name)
 {
 	string sheetName = name;
 	if (sheetName.size() == 0)
@@ -789,6 +1171,8 @@ void WG_EffectWindow::SaveEmitter(string name)
 
 	sheet->AddCategory("sprite_id");
 
+	sheet->AddCategory("b_emit_once_or_per_second");
+	sheet->AddCategory("emit_partice_once");
 	sheet->AddCategory("emit_per_second");
 
 	sheet->AddCategory("color");
@@ -807,69 +1191,86 @@ void WG_EffectWindow::SaveEmitter(string name)
 
 	sheet->AddCategory("vs_id");
 	sheet->AddCategory("geo_id");
-	sheet->AddCategory("ps_id");
+	sheet->AddCategory("mat_id");
+
+	sheet->AddCategory("BS");
+	sheet->AddCategory("DS");
 
 	// 값 추가
 
 	// type
-	effect->SetValue("type", to_string(EMITTER));
+	effect->SetValue("type", to_string(SPRITE_EMITTER));
 
 	// sprite_id
-	effect->SetValue("sprite_id", emitter_data.sprite_id);
+	effect->SetValue("sprite_id", sprite_emitter_data.sprite_id);
 
+	// b_emit_once_or_per_second
+	effect->SetValue("b_emit_once_or_per_second", to_string(sprite_emitter_data.b_emit_once_or_per_second));
 	// emit_per_second
-	effect->SetValue("emit_per_second", to_string(emitter_data.emit_per_second));
+	effect->SetValue("emit_partice_once", to_string(sprite_emitter_data.emit_partice_once));
+	// emit_per_second
+	effect->SetValue("emit_per_second", to_string(sprite_emitter_data.emit_per_second));
 
 	string fmt = "";
 
 	// color
-	fmt = to_string(emitter_data.color.x) + " " + to_string(emitter_data.color.y) + " " + to_string(emitter_data.color.z) + " " + to_string(emitter_data.color.w);
+	fmt = to_string(sprite_emitter_data.color.x) + " " + to_string(sprite_emitter_data.color.y) + " " + to_string(sprite_emitter_data.color.z) + " " + to_string(sprite_emitter_data.color.w);
 	effect->SetValue("color", fmt);
 
 	// life_time
-	fmt = to_string(emitter_data.life_time[0]) + " " + to_string(emitter_data.life_time[1]);
+	fmt = to_string(sprite_emitter_data.life_time[0]) + " " + to_string(sprite_emitter_data.life_time[1]);
 	effect->SetValue("life_time", fmt);
 
 	// initial_size
-	fmt = to_string(emitter_data.initial_size[0].x) + " " + to_string(emitter_data.initial_size[0].y) + " " + to_string(emitter_data.initial_size[0].z) + "~"
-		+ to_string(emitter_data.initial_size[1].x) + " " + to_string(emitter_data.initial_size[1].y) + " " + to_string(emitter_data.initial_size[1].z);
+	fmt = to_string(sprite_emitter_data.initial_size[0].x) + " " + to_string(sprite_emitter_data.initial_size[0].y) + " " + to_string(sprite_emitter_data.initial_size[0].z) + "~"
+		+ to_string(sprite_emitter_data.initial_size[1].x) + " " + to_string(sprite_emitter_data.initial_size[1].y) + " " + to_string(sprite_emitter_data.initial_size[1].z);
 	effect->SetValue("initial_size", fmt);
 
 	// initial_rotation
-	fmt = to_string(emitter_data.initial_rotation[0]) + " " + to_string(emitter_data.initial_rotation[1]);
+	fmt = to_string(sprite_emitter_data.initial_rotation[0]) + " " + to_string(sprite_emitter_data.initial_rotation[1]);
 	effect->SetValue("initial_rotation", fmt);
 
 	// initial_position
-	fmt = to_string(emitter_data.initial_position[0].x) + " " + to_string(emitter_data.initial_position[0].y) + " " + to_string(emitter_data.initial_position[0].z) + "~"
-		+ to_string(emitter_data.initial_position[1].x) + " " + to_string(emitter_data.initial_position[1].y) + " " + to_string(emitter_data.initial_position[1].z);
+	fmt = to_string(sprite_emitter_data.initial_position[0].x) + " " + to_string(sprite_emitter_data.initial_position[0].y) + " " + to_string(sprite_emitter_data.initial_position[0].z) + "~"
+		+ to_string(sprite_emitter_data.initial_position[1].x) + " " + to_string(sprite_emitter_data.initial_position[1].y) + " " + to_string(sprite_emitter_data.initial_position[1].z);
 	effect->SetValue("initial_position", fmt);
 
 	// initial_velocity
-	fmt = to_string(emitter_data.initial_velocity[0].x) + " " + to_string(emitter_data.initial_velocity[0].y) + " " + to_string(emitter_data.initial_velocity[0].z) + "~"
-		+ to_string(emitter_data.initial_velocity[1].x) + " " + to_string(emitter_data.initial_velocity[1].y) + " " + to_string(emitter_data.initial_velocity[1].z);
+	fmt = to_string(sprite_emitter_data.initial_velocity[0].x) + " " + to_string(sprite_emitter_data.initial_velocity[0].y) + " " + to_string(sprite_emitter_data.initial_velocity[0].z) + "~"
+		+ to_string(sprite_emitter_data.initial_velocity[1].x) + " " + to_string(sprite_emitter_data.initial_velocity[1].y) + " " + to_string(sprite_emitter_data.initial_velocity[1].z);
 	effect->SetValue("initial_velocity", fmt);
 
 	// size_per_lifetime
-	fmt = to_string(emitter_data.size_per_lifetime[0].x) + " " + to_string(emitter_data.size_per_lifetime[0].y) + " " + to_string(emitter_data.size_per_lifetime[0].z) + "~"
-		+ to_string(emitter_data.size_per_lifetime[1].x) + " " + to_string(emitter_data.size_per_lifetime[1].y) + " " + to_string(emitter_data.size_per_lifetime[1].z);
+	fmt = to_string(sprite_emitter_data.size_per_lifetime[0].x) + " " + to_string(sprite_emitter_data.size_per_lifetime[0].y) + " " + to_string(sprite_emitter_data.size_per_lifetime[0].z) + "~"
+		+ to_string(sprite_emitter_data.size_per_lifetime[1].x) + " " + to_string(sprite_emitter_data.size_per_lifetime[1].y) + " " + to_string(sprite_emitter_data.size_per_lifetime[1].z);
 	effect->SetValue("size_per_lifetime", fmt);
 	// rotation_per_lifetime
-	fmt = to_string(emitter_data.rotation_per_lifetime[0]) + " " + to_string(emitter_data.rotation_per_lifetime[1]);
+	fmt = to_string(sprite_emitter_data.rotation_per_lifetime[0]) + " " + to_string(sprite_emitter_data.rotation_per_lifetime[1]);
 	effect->SetValue("rotation_per_lifetime", fmt);
 	// accelation_per_lifetime
-	fmt = to_string(emitter_data.accelation_per_lifetime[0].x) + " " + to_string(emitter_data.accelation_per_lifetime[0].y) + " " + to_string(emitter_data.accelation_per_lifetime[0].z) + "~"
-		+ to_string(emitter_data.accelation_per_lifetime[1].x) + " " + to_string(emitter_data.accelation_per_lifetime[1].y) + " " + to_string(emitter_data.accelation_per_lifetime[1].z);
+	fmt = to_string(sprite_emitter_data.accelation_per_lifetime[0].x) + " " + to_string(sprite_emitter_data.accelation_per_lifetime[0].y) + " " + to_string(sprite_emitter_data.accelation_per_lifetime[0].z) + "~"
+		+ to_string(sprite_emitter_data.accelation_per_lifetime[1].x) + " " + to_string(sprite_emitter_data.accelation_per_lifetime[1].y) + " " + to_string(sprite_emitter_data.accelation_per_lifetime[1].z);
 	effect->SetValue("accelation_per_lifetime", fmt);
 
 	// vs_id
-	effect->SetValue("vs_id", emitter_data.vs_id);
+	effect->SetValue("vs_id", sprite_emitter_data.vs_id);
 	// geo_id
-	effect->SetValue("geo_id", emitter_data.geo_id);
+	effect->SetValue("geo_id", sprite_emitter_data.geo_id);
 	// ps_id
-	effect->SetValue("ps_id", emitter_data.ps_id);
+	effect->SetValue("mat_id", sprite_emitter_data.mat_id);
+
+
+	// BS
+	effect->SetValue("BS", to_string(sprite_emitter_data.bs_state));
+	// DS
+	effect->SetValue("DS", to_string(sprite_emitter_data.ds_state));
 
 
 	DATA->SaveSheetFile(sheetName);
+}
+
+void WG_EffectWindow::SavePointEmitter(string name)
+{
 }
 
 void WG_EffectWindow::LoadingSpriteData(string path)
@@ -893,14 +1294,14 @@ void WG_EffectWindow::LoadingSpriteData(string path)
 
 	switch (sprite->type)
 	{
-	case UV:
-		type_ = UV_TAB;
+	case UV_SPRITE:
+		type_ = UV_SPRITE;
 		uv_sprite = (UVSprite*)sprite;
 		if(uv_sprite)
 			uv_sprite_data = *uv_sprite;
 		break;
-	case TEX:
-		type_ = TEX_TAB;
+	case TEX_SPRITE:
+		type_ = TEX_SPRITE;
 		tex_sprite = (TextureSprite*)sprite;
 		if (tex_sprite)
 			tex_sprite_data = *tex_sprite;
@@ -998,7 +1399,7 @@ void WG_EffectWindow::LoadingSpriteData(string path)
 	//loading_data_id_ = "";
 }
 
-void WG_EffectWindow::LoadingEmitterData(string path)
+void WG_EffectWindow::LoadingEmitterData(string path, SpriteEmitter& emitter)
 {
 	auto strs1 = split(path, '\\');
 	auto name = strs1[max((int)strs1.size() - 1, 0)];
@@ -1018,14 +1419,15 @@ void WG_EffectWindow::LoadingEmitterData(string path)
 
 	auto effect = sheet->LoadItem(name);
 
-	// type
-	effect->GetValue("type");
-
 	// sprite_id
-	emitter_data.sprite_id			= effect->GetValue("sprite_id");
+	emitter.sprite_id			= effect->GetValue("sprite_id");
 
+	// b_emit_once_or_per_second
+	emitter.b_emit_once_or_per_second = stoi(effect->GetValue("b_emit_once_or_per_second"));
+	// emit_partice_once
+	emitter.emit_partice_once = stoi(effect->GetValue("emit_partice_once"));
 	// emit_per_second
-	emitter_data.emit_per_second	= stoi(effect->GetValue("emit_per_second"));
+	emitter.emit_per_second	= stoi(effect->GetValue("emit_per_second"));
 
 	vector<string> splited_str;
 	vector<string> splited_str2;
@@ -1035,10 +1437,10 @@ void WG_EffectWindow::LoadingEmitterData(string path)
 		splited_str = split(effect->GetValue("color"), ' ');
 		if (splited_str.size() < 4)
 			return;
-		emitter_data.color.x = stof(splited_str[0]);
-		emitter_data.color.y = stof(splited_str[1]);
-		emitter_data.color.z = stof(splited_str[2]);
-		emitter_data.color.w = stof(splited_str[3]);
+		emitter.color.x = stof(splited_str[0]);
+		emitter.color.y = stof(splited_str[1]);
+		emitter.color.z = stof(splited_str[2]);
+		emitter.color.w = stof(splited_str[3]);
 	}
 
 	// life_time
@@ -1046,8 +1448,8 @@ void WG_EffectWindow::LoadingEmitterData(string path)
 		splited_str = split(effect->GetValue("life_time"), ' ');
 		if (splited_str.size() < 2)
 			return;
-		emitter_data.life_time[0] = stof(splited_str[0]);
-		emitter_data.life_time[1] = stof(splited_str[1]);
+		emitter.life_time[0] = stof(splited_str[0]);
+		emitter.life_time[1] = stof(splited_str[1]);
 	}
 
 	// initial_size
@@ -1059,16 +1461,16 @@ void WG_EffectWindow::LoadingEmitterData(string path)
 		splited_str2 = split(splited_str[0], ' ');
 		if (splited_str2.size() < 3)
 			return;
-		emitter_data.initial_size[0].x = stof(splited_str2[0]);
-		emitter_data.initial_size[0].y = stof(splited_str2[1]);
-		emitter_data.initial_size[0].z = stof(splited_str2[2]);
+		emitter.initial_size[0].x = stof(splited_str2[0]);
+		emitter.initial_size[0].y = stof(splited_str2[1]);
+		emitter.initial_size[0].z = stof(splited_str2[2]);
 		// max
 		splited_str2 = split(splited_str[1], ' ');
 		if (splited_str2.size() < 3)
 			return;
-		emitter_data.initial_size[1].x = stof(splited_str2[0]);
-		emitter_data.initial_size[1].y = stof(splited_str2[1]);
-		emitter_data.initial_size[1].z = stof(splited_str2[2]);
+		emitter.initial_size[1].x = stof(splited_str2[0]);
+		emitter.initial_size[1].y = stof(splited_str2[1]);
+		emitter.initial_size[1].z = stof(splited_str2[2]);
 	}
 
 	// initial_rotation
@@ -1076,8 +1478,8 @@ void WG_EffectWindow::LoadingEmitterData(string path)
 		splited_str = split(effect->GetValue("initial_rotation"), ' ');
 		if (splited_str.size() < 2)
 			return;
-		emitter_data.initial_rotation[0] = stof(splited_str[0]);
-		emitter_data.initial_rotation[1] = stof(splited_str[1]);
+		emitter.initial_rotation[0] = stof(splited_str[0]);
+		emitter.initial_rotation[1] = stof(splited_str[1]);
 	}
 
 	// initial_position
@@ -1089,16 +1491,16 @@ void WG_EffectWindow::LoadingEmitterData(string path)
 		splited_str2 = split(splited_str[0], ' ');
 		if (splited_str2.size() < 3)
 			return;
-		emitter_data.initial_position[0].x = stof(splited_str2[0]);
-		emitter_data.initial_position[0].y = stof(splited_str2[1]);
-		emitter_data.initial_position[0].z = stof(splited_str2[2]);
+		emitter.initial_position[0].x = stof(splited_str2[0]);
+		emitter.initial_position[0].y = stof(splited_str2[1]);
+		emitter.initial_position[0].z = stof(splited_str2[2]);
 		// max
 		splited_str2 = split(splited_str[1], ' ');
 		if (splited_str2.size() < 3)
 			return;
-		emitter_data.initial_position[1].x = stof(splited_str2[0]);
-		emitter_data.initial_position[1].y = stof(splited_str2[1]);
-		emitter_data.initial_position[1].z = stof(splited_str2[2]);
+		emitter.initial_position[1].x = stof(splited_str2[0]);
+		emitter.initial_position[1].y = stof(splited_str2[1]);
+		emitter.initial_position[1].z = stof(splited_str2[2]);
 	}
 
 	// initial_velocity
@@ -1110,16 +1512,16 @@ void WG_EffectWindow::LoadingEmitterData(string path)
 		splited_str2 = split(splited_str[0], ' ');
 		if (splited_str2.size() < 3)
 			return;
-		emitter_data.initial_velocity[0].x = stof(splited_str2[0]);
-		emitter_data.initial_velocity[0].y = stof(splited_str2[1]);
-		emitter_data.initial_velocity[0].z = stof(splited_str2[2]);
+		emitter.initial_velocity[0].x = stof(splited_str2[0]);
+		emitter.initial_velocity[0].y = stof(splited_str2[1]);
+		emitter.initial_velocity[0].z = stof(splited_str2[2]);
 		// max
 		splited_str2 = split(splited_str[1], ' ');
 		if (splited_str2.size() < 3)
 			return;
-		emitter_data.initial_velocity[1].x = stof(splited_str2[0]);
-		emitter_data.initial_velocity[1].y = stof(splited_str2[1]);
-		emitter_data.initial_velocity[1].z = stof(splited_str2[2]);
+		emitter.initial_velocity[1].x = stof(splited_str2[0]);
+		emitter.initial_velocity[1].y = stof(splited_str2[1]);
+		emitter.initial_velocity[1].z = stof(splited_str2[2]);
 	}
 
 	// size_per_lifetime
@@ -1131,16 +1533,16 @@ void WG_EffectWindow::LoadingEmitterData(string path)
 		splited_str2 = split(splited_str[0], ' ');
 		if (splited_str2.size() < 3)
 			return;
-		emitter_data.size_per_lifetime[0].x = stof(splited_str2[0]);
-		emitter_data.size_per_lifetime[0].y = stof(splited_str2[1]);
-		emitter_data.size_per_lifetime[0].z = stof(splited_str2[2]);
+		emitter.size_per_lifetime[0].x = stof(splited_str2[0]);
+		emitter.size_per_lifetime[0].y = stof(splited_str2[1]);
+		emitter.size_per_lifetime[0].z = stof(splited_str2[2]);
 		// max
 		splited_str2 = split(splited_str[1], ' ');
 		if (splited_str2.size() < 3)
 			return;
-		emitter_data.size_per_lifetime[1].x = stof(splited_str2[0]);
-		emitter_data.size_per_lifetime[1].y = stof(splited_str2[1]);
-		emitter_data.size_per_lifetime[1].z = stof(splited_str2[2]);
+		emitter.size_per_lifetime[1].x = stof(splited_str2[0]);
+		emitter.size_per_lifetime[1].y = stof(splited_str2[1]);
+		emitter.size_per_lifetime[1].z = stof(splited_str2[2]);
 	}
 
 	// rotation_per_lifetime
@@ -1148,8 +1550,8 @@ void WG_EffectWindow::LoadingEmitterData(string path)
 		splited_str = split(effect->GetValue("rotation_per_lifetime"), ' ');
 		if (splited_str.size() < 2)
 			return;
-		emitter_data.rotation_per_lifetime[0] = stof(splited_str[0]);
-		emitter_data.rotation_per_lifetime[1] = stof(splited_str[1]);
+		emitter.rotation_per_lifetime[0] = stof(splited_str[0]);
+		emitter.rotation_per_lifetime[1] = stof(splited_str[1]);
 	}
 
 	// accelation_per_lifetime
@@ -1161,21 +1563,222 @@ void WG_EffectWindow::LoadingEmitterData(string path)
 		splited_str2 = split(splited_str[0], ' ');
 		if (splited_str2.size() < 3)
 			return;
-		emitter_data.accelation_per_lifetime[0].x = stof(splited_str2[0]);
-		emitter_data.accelation_per_lifetime[0].y = stof(splited_str2[1]);
-		emitter_data.accelation_per_lifetime[0].z = stof(splited_str2[2]);
+		emitter.accelation_per_lifetime[0].x = stof(splited_str2[0]);
+		emitter.accelation_per_lifetime[0].y = stof(splited_str2[1]);
+		emitter.accelation_per_lifetime[0].z = stof(splited_str2[2]);
 		// max
 		splited_str2 = split(splited_str[1], ' ');
 		if (splited_str2.size() < 3)
 			return;
-		emitter_data.accelation_per_lifetime[1].x = stof(splited_str2[0]);
-		emitter_data.accelation_per_lifetime[1].y = stof(splited_str2[1]);
-		emitter_data.accelation_per_lifetime[1].z = stof(splited_str2[2]);
+		emitter.accelation_per_lifetime[1].x = stof(splited_str2[0]);
+		emitter.accelation_per_lifetime[1].y = stof(splited_str2[1]);
+		emitter.accelation_per_lifetime[1].z = stof(splited_str2[2]);
 	}
 
-	emitter_data.vs_id		= effect->GetValue("vs_id");
-	emitter_data.geo_id		= effect->GetValue("geo_id");
-	emitter_data.ps_id		= effect->GetValue("ps_id");
+	// BS
+	emitter.bs_state = (E_EffectBS)stoi(effect->GetValue("BS"));
 
-	type_ = EMITTER_TAB;
+	// DS
+	emitter.ds_state = (E_EffectDS)stoi(effect->GetValue("DS"));
+
+	emitter.vs_id		= effect->GetValue("vs_id");
+	emitter.geo_id		= effect->GetValue("geo_id");
+	emitter.mat_id		= effect->GetValue("mat_id");
+}
+
+void WG_EffectWindow::LoadingEffectData(string path)
+{
+	auto strs1 = split(path, '\\');
+	auto name = strs1[max((int)strs1.size() - 1, 0)];
+	auto strs2 = split(name, '.');
+	name = strs2[0];
+
+	auto sheet = DATA->LoadSheet(name);
+
+	if (sheet == NULL)
+	{
+		DATA->LoadSheetFile(path);
+		sheet = DATA->LoadSheet(name);
+	}
+
+	if (sheet == NULL)
+		return;
+
+	for (auto pair : sheet->resdic_item)
+	{
+		auto effect = pair.second;
+
+		auto emitter = make_shared<SpriteEmitter>();
+
+		// sprite_id
+		emitter->sprite_id = effect->GetValue("sprite_id");
+
+		// b_emit_once_or_per_second
+		emitter->b_emit_once_or_per_second = stoi(effect->GetValue("b_emit_once_or_per_second"));
+		// emit_partice_once
+		emitter->emit_partice_once = stoi(effect->GetValue("emit_partice_once"));
+		// emit_per_second
+		emitter->emit_per_second = stoi(effect->GetValue("emit_per_second"));
+
+		vector<string> splited_str;
+		vector<string> splited_str2;
+
+		// color
+		{
+			splited_str = split(effect->GetValue("color"), ' ');
+			if (splited_str.size() < 4)
+				return;
+			emitter->color.x = stof(splited_str[0]);
+			emitter->color.y = stof(splited_str[1]);
+			emitter->color.z = stof(splited_str[2]);
+			emitter->color.w = stof(splited_str[3]);
+		}
+
+		// life_time
+		{
+			splited_str = split(effect->GetValue("life_time"), ' ');
+			if (splited_str.size() < 2)
+				return;
+			emitter->life_time[0] = stof(splited_str[0]);
+			emitter->life_time[1] = stof(splited_str[1]);
+		}
+
+		// initial_size
+		{
+			splited_str = split(effect->GetValue("initial_size"), '~');
+			if (splited_str.size() < 2)
+				return;
+			// min
+			splited_str2 = split(splited_str[0], ' ');
+			if (splited_str2.size() < 3)
+				return;
+			emitter->initial_size[0].x = stof(splited_str2[0]);
+			emitter->initial_size[0].y = stof(splited_str2[1]);
+			emitter->initial_size[0].z = stof(splited_str2[2]);
+			// max
+			splited_str2 = split(splited_str[1], ' ');
+			if (splited_str2.size() < 3)
+				return;
+			emitter->initial_size[1].x = stof(splited_str2[0]);
+			emitter->initial_size[1].y = stof(splited_str2[1]);
+			emitter->initial_size[1].z = stof(splited_str2[2]);
+		}
+
+		// initial_rotation
+		{
+			splited_str = split(effect->GetValue("initial_rotation"), ' ');
+			if (splited_str.size() < 2)
+				return;
+			emitter->initial_rotation[0] = stof(splited_str[0]);
+			emitter->initial_rotation[1] = stof(splited_str[1]);
+		}
+
+		// initial_position
+		{
+			splited_str = split(effect->GetValue("initial_position"), '~');
+			if (splited_str.size() < 2)
+				return;
+			// min
+			splited_str2 = split(splited_str[0], ' ');
+			if (splited_str2.size() < 3)
+				return;
+			emitter->initial_position[0].x = stof(splited_str2[0]);
+			emitter->initial_position[0].y = stof(splited_str2[1]);
+			emitter->initial_position[0].z = stof(splited_str2[2]);
+			// max
+			splited_str2 = split(splited_str[1], ' ');
+			if (splited_str2.size() < 3)
+				return;
+			emitter->initial_position[1].x = stof(splited_str2[0]);
+			emitter->initial_position[1].y = stof(splited_str2[1]);
+			emitter->initial_position[1].z = stof(splited_str2[2]);
+		}
+
+		// initial_velocity
+		{
+			splited_str = split(effect->GetValue("initial_velocity"), '~');
+			if (splited_str.size() < 2)
+				return;
+			// min
+			splited_str2 = split(splited_str[0], ' ');
+			if (splited_str2.size() < 3)
+				return;
+			emitter->initial_velocity[0].x = stof(splited_str2[0]);
+			emitter->initial_velocity[0].y = stof(splited_str2[1]);
+			emitter->initial_velocity[0].z = stof(splited_str2[2]);
+			// max
+			splited_str2 = split(splited_str[1], ' ');
+			if (splited_str2.size() < 3)
+				return;
+			emitter->initial_velocity[1].x = stof(splited_str2[0]);
+			emitter->initial_velocity[1].y = stof(splited_str2[1]);
+			emitter->initial_velocity[1].z = stof(splited_str2[2]);
+		}
+
+		// size_per_lifetime
+		{
+			splited_str = split(effect->GetValue("size_per_lifetime"), '~');
+			if (splited_str.size() < 2)
+				return;
+			// min
+			splited_str2 = split(splited_str[0], ' ');
+			if (splited_str2.size() < 3)
+				return;
+			emitter->size_per_lifetime[0].x = stof(splited_str2[0]);
+			emitter->size_per_lifetime[0].y = stof(splited_str2[1]);
+			emitter->size_per_lifetime[0].z = stof(splited_str2[2]);
+			// max
+			splited_str2 = split(splited_str[1], ' ');
+			if (splited_str2.size() < 3)
+				return;
+			emitter->size_per_lifetime[1].x = stof(splited_str2[0]);
+			emitter->size_per_lifetime[1].y = stof(splited_str2[1]);
+			emitter->size_per_lifetime[1].z = stof(splited_str2[2]);
+		}
+
+		// rotation_per_lifetime
+		{
+			splited_str = split(effect->GetValue("rotation_per_lifetime"), ' ');
+			if (splited_str.size() < 2)
+				return;
+			emitter->rotation_per_lifetime[0] = stof(splited_str[0]);
+			emitter->rotation_per_lifetime[1] = stof(splited_str[1]);
+		}
+
+		// accelation_per_lifetime
+		{
+			splited_str = split(effect->GetValue("accelation_per_lifetime"), '~');
+			if (splited_str.size() < 2)
+				return;
+			// min
+			splited_str2 = split(splited_str[0], ' ');
+			if (splited_str2.size() < 3)
+				return;
+			emitter->accelation_per_lifetime[0].x = stof(splited_str2[0]);
+			emitter->accelation_per_lifetime[0].y = stof(splited_str2[1]);
+			emitter->accelation_per_lifetime[0].z = stof(splited_str2[2]);
+			// max
+			splited_str2 = split(splited_str[1], ' ');
+			if (splited_str2.size() < 3)
+				return;
+			emitter->accelation_per_lifetime[1].x = stof(splited_str2[0]);
+			emitter->accelation_per_lifetime[1].y = stof(splited_str2[1]);
+			emitter->accelation_per_lifetime[1].z = stof(splited_str2[2]);
+		}
+
+		// BS
+		emitter->bs_state = (E_EffectBS)stoi(effect->GetValue("BS"));
+
+		// DS
+		emitter->ds_state = (E_EffectDS)stoi(effect->GetValue("DS"));
+
+
+		emitter->vs_id = effect->GetValue("vs_id");
+		emitter->geo_id = effect->GetValue("geo_id");
+		emitter->mat_id = effect->GetValue("mat_id");
+
+		emitter_map.insert({ pair.first, emitter });
+	}
+	
+
 }
