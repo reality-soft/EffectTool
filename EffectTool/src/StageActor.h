@@ -9,9 +9,9 @@ namespace KGCA41B {
 		virtual void OnInit(entt::registry& registry, KGCA41B::AABBShape collision_box);
 		virtual void OnUpdate(entt::registry& registry);
 	public:
-			void	CreateVertexData(BoxShape& box_comp);
-			HRESULT CreateVertexBuffer(BoxShape& box_comp);
-			void	CreateIndexData(BoxShape& box_comp);
-			HRESULT CreateIndexBuffer(BoxShape& box_comp);
+			void	CreateVertexData(C_BoxShape& box_comp);
+			HRESULT CreateVertexBuffer(C_BoxShape& box_comp);
+			void	CreateIndexData(C_BoxShape& box_comp);
+			HRESULT CreateIndexBuffer(C_BoxShape& box_comp);
 	};
 }
