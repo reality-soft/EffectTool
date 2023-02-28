@@ -32,9 +32,14 @@ void WG_MainMenu::Render()
 				effect_tool->InvertOpen();
 		}
 	}
+
 	ImGui::EndMainMenuBar();
 
 	ImGui::Begin("Render Option Window", &open_);
+	
+	string fps = "FPS : " + to_string(TIMER->GetFPS());
+	ImGui::Text(fps.c_str());
+	
 	static bool bWireFrame = false;
 
 	ImGui::Checkbox("WireFrame", &bWireFrame);
@@ -71,10 +76,6 @@ void WG_EffectWindow::Render()
 				if (ImGui::MenuItem("Sprite Emitter"))
 				{
 					type_ = SPRITE_EMITTER;
-				}
-				if (ImGui::MenuItem("Point Emitter"))
-				{
-					type_ = POINT_EMITTER;
 				}
 				if (ImGui::MenuItem("Effect"))
 				{
@@ -129,31 +130,6 @@ void WG_EffectWindow::Render()
 				auto scene = (EffectTool*)SCENE->LoadScene("EffectTool");
 				if (scene)
 					scene->AddEmitter(make_shared<SpriteEmitter>(sprite_emitter_data));
-			}
-		}break;
-		case POINT_EMITTER:
-		{
-			PointEmitterBoard(point_emitter_data);
-
-			ImGui::SetNextItemWidth(TEXT_WIDTH);
-			ImGui::InputTextWithHint("sprite name", "Name", particle_name, IM_ARRAYSIZE(particle_name));
-			if (ImGui::Button("Save"))
-			{
-				SaveSpriteEmitter(particle_name);
-			}
-			ImGui::SameLine();
-			if (ImGui::Button("Reset"))
-			{
-				auto scene = (EffectTool*)SCENE->LoadScene("EffectTool");
-				if (scene)
-					scene->AddEmitter(make_shared<SpriteEmitter>(sprite_emitter_data));
-			}
-			ImGui::SameLine();
-			if (ImGui::Button("Render"))
-			{
-				auto scene = (EffectTool*)SCENE->LoadScene("EffectTool");
-				if (scene)
-					scene->ResetEmitter();
 			}
 		}break;
 		case EFFECT:
@@ -423,27 +399,37 @@ void WG_EffectWindow::SpriteEmitterBoard(SpriteEmitter& emitter)
 	SelectSprite(emitter.sprite_id);
 
 	ImGui::Text("Emit Mode");
-	static int mode = 0;
-	mode = emitter.b_emit_once_or_per_second;
-	if (ImGui::RadioButton("Once", mode == false))
+	static int mode = ONCE;
+	mode = emitter.emit_type;
+	if (ImGui::RadioButton("Once", mode == ONCE))
 	{ 
-		mode = emitter.b_emit_once_or_per_second;
-		emitter.b_emit_once_or_per_second = false;
+		mode = ONCE;
+		emitter.emit_type = ONCE;
 	} 
 	ImGui::SameLine();
-	if (ImGui::RadioButton("Per Second", mode == true))
+	if (ImGui::RadioButton("Per Second", mode == PER_SECOND))
 	{ 
-		mode = emitter.b_emit_once_or_per_second;
-		emitter.b_emit_once_or_per_second = true;
+		mode = PER_SECOND;
+		emitter.emit_type = PER_SECOND;
+	}
+	ImGui::SameLine();
+	if (ImGui::RadioButton("Per Frame", mode == PER_FRAME))
+	{
+		mode = PER_FRAME;
+		emitter.emit_type = PER_FRAME;
 	}
 	
 	switch (mode)
 	{
-		case false:
+		case ONCE:
 			ImGui::SetNextItemWidth(150.0f);
-			ImGui::InputInt("Emit Once", &emitter.emit_partice_once);
+			ImGui::InputInt("Emit Once", &emitter.emit_once);
 			break;
-		case true:
+		case PER_SECOND:
+			ImGui::SetNextItemWidth(150.0f);
+			ImGui::InputInt("Emit per Second", &emitter.emit_per_second);
+			break;
+		case PER_FRAME:
 			ImGui::SetNextItemWidth(150.0f);
 			ImGui::InputInt("Emit per Second", &emitter.emit_per_second);
 	}
@@ -520,11 +506,6 @@ void WG_EffectWindow::SpriteEmitterBoard(SpriteEmitter& emitter)
 	// BS, DS Selection
 	SelectBSOptions(emitter.bs_state);
 	SelectDSOptions(emitter.ds_state);
-}
-
-void WG_EffectWindow::PointEmitterBoard(PointEmitter& emitter)
-{
-	
 }
 
 void WG_EffectWindow::EffectBoard()
@@ -632,9 +613,10 @@ void WG_EffectWindow::EffectBoard()
 
 			sheet->AddCategory("sprite_id");
 
-			sheet->AddCategory("b_emit_once_or_per_second");
-			sheet->AddCategory("emit_partice_once");
+			sheet->AddCategory("emit_type");
+			sheet->AddCategory("emit_once");
 			sheet->AddCategory("emit_per_second");
+			sheet->AddCategory("emit_per_frame");
 
 			sheet->AddCategory("color");
 
@@ -665,12 +647,14 @@ void WG_EffectWindow::EffectBoard()
 			// sprite_id
 			effect->SetValue("sprite_id", emitter->sprite_id);
 
-			// b_emit_once_or_per_second
-			effect->SetValue("b_emit_once_or_per_second", to_string(emitter->b_emit_once_or_per_second));
-			// emit_per_second
-			effect->SetValue("emit_partice_once", to_string(emitter->emit_partice_once));
+			// emit_type
+			effect->SetValue("emit_type", to_string(emitter->emit_type));
+			// emit_once
+			effect->SetValue("emit_once", to_string(emitter->emit_once));
 			// emit_per_second
 			effect->SetValue("emit_per_second", to_string(emitter->emit_per_second));
+			// emit_per_frame
+			emitter->emit_per_frame = stoi(effect->GetValue("emit_per_frame"));
 
 			string fmt = "";
 
@@ -767,10 +751,6 @@ void WG_EffectWindow::EffectBoard()
 			}
 		}
 		break;
-		case POINT_EMITTER:
-		{
-
-		}
 		break;
 		}
 	}
@@ -1172,8 +1152,9 @@ void WG_EffectWindow::SaveSpriteEmitter(string name)
 	sheet->AddCategory("sprite_id");
 
 	sheet->AddCategory("b_emit_once_or_per_second");
-	sheet->AddCategory("emit_partice_once");
+	sheet->AddCategory("emit_once");
 	sheet->AddCategory("emit_per_second");
+	sheet->AddCategory("emit_per_frame");
 
 	sheet->AddCategory("color");
 
@@ -1204,12 +1185,14 @@ void WG_EffectWindow::SaveSpriteEmitter(string name)
 	// sprite_id
 	effect->SetValue("sprite_id", sprite_emitter_data.sprite_id);
 
-	// b_emit_once_or_per_second
-	effect->SetValue("b_emit_once_or_per_second", to_string(sprite_emitter_data.b_emit_once_or_per_second));
-	// emit_per_second
-	effect->SetValue("emit_partice_once", to_string(sprite_emitter_data.emit_partice_once));
+	// emit_type
+	effect->SetValue("emit_type", to_string(sprite_emitter_data.emit_type));
+	// emit_once
+	effect->SetValue("emit_once", to_string(sprite_emitter_data.emit_once));
 	// emit_per_second
 	effect->SetValue("emit_per_second", to_string(sprite_emitter_data.emit_per_second));
+	// emit_per_frame
+	effect->SetValue("emit_per_frame", to_string(sprite_emitter_data.emit_per_frame));
 
 	string fmt = "";
 
@@ -1267,10 +1250,6 @@ void WG_EffectWindow::SaveSpriteEmitter(string name)
 
 
 	DATA->SaveSheetFile(sheetName);
-}
-
-void WG_EffectWindow::SavePointEmitter(string name)
-{
 }
 
 void WG_EffectWindow::LoadingSpriteData(string path)
@@ -1423,11 +1402,13 @@ void WG_EffectWindow::LoadingEmitterData(string path, SpriteEmitter& emitter)
 	emitter.sprite_id			= effect->GetValue("sprite_id");
 
 	// b_emit_once_or_per_second
-	emitter.b_emit_once_or_per_second = stoi(effect->GetValue("b_emit_once_or_per_second"));
-	// emit_partice_once
-	emitter.emit_partice_once = stoi(effect->GetValue("emit_partice_once"));
+	emitter.emit_type = (E_EmitType)stoi(effect->GetValue("emit_type"));
+	// emit_once
+	emitter.emit_once = stoi(effect->GetValue("emit_once"));
 	// emit_per_second
 	emitter.emit_per_second	= stoi(effect->GetValue("emit_per_second"));
+	// emit_per_second
+	emitter.emit_per_frame = stoi(effect->GetValue("emit_per_frame"));
 
 	vector<string> splited_str;
 	vector<string> splited_str2;
@@ -1613,12 +1594,14 @@ void WG_EffectWindow::LoadingEffectData(string path)
 		// sprite_id
 		emitter->sprite_id = effect->GetValue("sprite_id");
 
-		// b_emit_once_or_per_second
-		emitter->b_emit_once_or_per_second = stoi(effect->GetValue("b_emit_once_or_per_second"));
-		// emit_partice_once
-		emitter->emit_partice_once = stoi(effect->GetValue("emit_partice_once"));
+		// emit_type
+		emitter->emit_type = (E_EmitType)stoi(effect->GetValue("emit_type"));
+		// emit_once
+		emitter->emit_once = stoi(effect->GetValue("emit_once"));
 		// emit_per_second
 		emitter->emit_per_second = stoi(effect->GetValue("emit_per_second"));
+		// emit_per_frame
+		emitter->emit_per_frame = stoi(effect->GetValue("emit_per_frame"));
 
 		vector<string> splited_str;
 		vector<string> splited_str2;

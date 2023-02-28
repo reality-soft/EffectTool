@@ -21,7 +21,6 @@ namespace KGCA41B
 		void	UVSpriteBoard();
 		void	TexSpriteBoard();
 		void	SpriteEmitterBoard(SpriteEmitter& emitter);
-		void	PointEmitterBoard(PointEmitter& emitter);
 		void	EffectBoard();
 	private:
 		void	SelectBSOptions(E_EffectBS& bs_state);
@@ -40,7 +39,6 @@ namespace KGCA41B
 		void	SaveUVSprite(string name);
 		void	SaveTexSprite(string name);
 		void	SaveSpriteEmitter(string name);
-		void	SavePointEmitter(string name);
 
 	private:
 		E_EffectType	type_;
@@ -48,7 +46,6 @@ namespace KGCA41B
 		UVSprite		uv_sprite_data;
 		TextureSprite	tex_sprite_data;
 		SpriteEmitter	sprite_emitter_data;
-		PointEmitter	point_emitter_data;
 		map<string, shared_ptr<Emitter>> emitter_map;
 	public:
 		void LoadingSpriteData(string path);
