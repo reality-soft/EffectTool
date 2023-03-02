@@ -8,8 +8,8 @@ using namespace KGCA41B;
 void EffectTool::OnInit()
 {
 	GUI->AddWidget("MainMenu", &tool_window_);
-	DATA->Init("D:/Data");
-	RESOURCE->Init("D:/Contents"); 
+	DATA->Init("../../Data");
+	RESOURCE->Init("../../Contents"); 
 
 	RENDER_TARGET->Init("BackBuffer");
 
@@ -65,13 +65,13 @@ void EffectTool::OnRelease()
 
 }
 
-void KGCA41B::EffectTool::AddEmitter(shared_ptr<Emitter> emitter)
+void EffectTool::AddEmitter(shared_ptr<Emitter> emitter)
 {
 	
 	effect_.AddEmitter(reg_effect_tool_, emitter);
 }
 
-void KGCA41B::EffectTool::ResetEmitter()
+void EffectTool::ResetEmitter()
 {
 	effect_.ResetEmitter(reg_effect_tool_);
 }
