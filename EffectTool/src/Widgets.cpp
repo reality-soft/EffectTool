@@ -5,7 +5,7 @@
 #include <regex>
 #include <algorithm>
 
-using namespace KGCA41B;
+using namespace reality;
 
 #define LISTBOX_WIDTH 300.0f
 #define TEXT_WIDTH 150.0f

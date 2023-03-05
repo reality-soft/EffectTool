@@ -2,9 +2,9 @@
 #include "Engine_include.h"
 #include "Widgets.h"
 
-namespace KGCA41B
+namespace reality
 {
-	class EffectWidgetScene : public KGCA41B::Scene
+	class EffectWidgetScene : public reality::Scene
 	{
 	public:
 		string rt_id;
@@ -17,7 +17,7 @@ namespace KGCA41B
 	private:
 		entt::registry reg_scene;
 
-		KGCA41B::RenderSystem sys_render;
+		reality::RenderSystem sys_render;
 	};
 
 }

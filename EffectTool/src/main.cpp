@@ -4,7 +4,7 @@ int WINAPI wWinMain(HINSTANCE hinstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 {
 	ENGINE->OnInit(hinstance, L"EffectTool", { 1600, 900 });
 
-	KGCA41B::EffectTool tool;
+	reality::EffectTool tool;
 
 	ENGINE->Run(&tool);
 

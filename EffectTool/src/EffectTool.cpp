@@ -3,7 +3,7 @@
 #include "SceneMgr.h"
 #include "DXStates.h"
 
-using namespace KGCA41B;
+using namespace reality;
 
 void EffectTool::OnInit()
 {

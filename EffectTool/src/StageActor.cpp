@@ -1,9 +1,9 @@
 #include "StageActor.h"
 #include "TimeMgr.h"
 
-using namespace KGCA41B;
+using namespace reality;
 
-void StageActor::OnInit(entt::registry& registry, KGCA41B::AABBShape collision_box)
+void StageActor::OnInit(entt::registry& registry, reality::AABBShape collision_box)
 {
 	collision_box_ = collision_box;
 
@@ -13,7 +13,7 @@ void StageActor::OnInit(entt::registry& registry, KGCA41B::AABBShape collision_b
 	C_Transform& transform = registry.emplace<C_Transform>(entity_id_, C_Transform());
 	transform.local = XMMatrixIdentity();
 	transform.world = XMMatrixIdentity();
-	transform_tree_.root_node = make_shared<TransformTreeNode>(TYPE_ID(KGCA41B::C_Transform));
+	transform_tree_.root_node = make_shared<TransformTreeNode>(TYPE_ID(reality::C_Transform));
 
 	// 박스 컴포넌트 추가
 	C_BoxShape& box_comp = registry.emplace<C_BoxShape>(entity_id_, C_BoxShape());
@@ -21,12 +21,12 @@ void StageActor::OnInit(entt::registry& registry, KGCA41B::AABBShape collision_b
 	box_comp.vs_id = "DefaultShapeVS.cso";
 	box_comp.material_id = "box_material.mat";
 
-	transform_tree_.AddNodeToNode(TYPE_ID(KGCA41B::C_Transform), TYPE_ID(KGCA41B::C_BoxShape));
+	transform_tree_.AddNodeToNode(TYPE_ID(reality::C_Transform), TYPE_ID(reality::C_BoxShape));
 
 	transform_tree_.root_node->OnUpdate(registry, entity_id_);
 }
 
-void KGCA41B::StageActor::OnUpdate(entt::registry& registry)
+void reality::StageActor::OnUpdate(entt::registry& registry)
 {
 	//this->node_num_ = SpacePartition::GetInst()->UpdateNodeObjectBelongs(0, collision_box_, entity_id_);
 	//vector<int> node_to_search = SpacePartition::GetInst()->FindCollisionSearchNode(0, collision_box_);
@@ -34,7 +34,7 @@ void KGCA41B::StageActor::OnUpdate(entt::registry& registry)
 }
 
 
-void KGCA41B::StageActor::CreateVertexData(C_BoxShape& box_comp)
+void reality::StageActor::CreateVertexData(C_BoxShape& box_comp)
 {
 	box_comp.vertex_list.push_back({ { -1.0f, +1.0f, +0.0f }, {+0.0f, +0.0f, +0.0f}, {+1.0f, +1.0f, +1.0f, +1.0f}, {+0.0f, +0.0f} });
 	box_comp.vertex_list.push_back({ { +1.0f, +1.0f, +0.0f }, {+0.0f, +0.0f, +0.0f}, {+1.0f, +1.0f, +1.0f, +1.0f}, {+1.0f, +0.0f} });
@@ -42,7 +42,7 @@ void KGCA41B::StageActor::CreateVertexData(C_BoxShape& box_comp)
 	box_comp.vertex_list.push_back({ { +1.0f, -1.0f, +0.0f }, {+0.0f, +0.0f, +0.0f}, {+1.0f, +1.0f, +1.0f, +1.0f}, {+1.0f, +1.0f} });
 }
 
-HRESULT KGCA41B::StageActor::CreateVertexBuffer(C_BoxShape& box_comp)
+HRESULT reality::StageActor::CreateVertexBuffer(C_BoxShape& box_comp)
 {
 	if (box_comp.vertex_list.size() == 0)
 		return S_OK;
@@ -69,7 +69,7 @@ HRESULT KGCA41B::StageActor::CreateVertexBuffer(C_BoxShape& box_comp)
 	return DX11APP->GetDevice()->CreateBuffer(&bufDesc, &subResourse, &box_comp.vertex_buffer);
 }
 
-void KGCA41B::StageActor::CreateIndexData(C_BoxShape& box_comp)
+void reality::StageActor::CreateIndexData(C_BoxShape& box_comp)
 {
 	box_comp.index_list.push_back(0);
 	box_comp.index_list.push_back(1);
@@ -79,7 +79,7 @@ void KGCA41B::StageActor::CreateIndexData(C_BoxShape& box_comp)
 	box_comp.index_list.push_back(3);
 }
 
-HRESULT KGCA41B::StageActor::CreateIndexBuffer(C_BoxShape& box_comp)
+HRESULT reality::StageActor::CreateIndexBuffer(C_BoxShape& box_comp)
 {
 	D3D11_BUFFER_DESC bufDesc;
 

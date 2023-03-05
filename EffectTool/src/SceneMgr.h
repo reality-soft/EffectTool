@@ -2,7 +2,7 @@
 #include "DllMacro.h"
 #include "Scene.h"
 
-namespace KGCA41B
+namespace reality
 {
 	class SceneMgr
 	{

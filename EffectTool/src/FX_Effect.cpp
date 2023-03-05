@@ -2,7 +2,7 @@
 #include "Components.h"
 #include "TimeMgr.h"
 
-using namespace KGCA41B;
+using namespace reality;
 
 void FX_Effect::OnInit(entt::registry& registry, AABBShape collision_box, string effect_id)
 {
@@ -20,7 +20,7 @@ void FX_Effect::OnInit(entt::registry& registry, AABBShape collision_box, string
 	}
 	
 
-	transform_tree_.AddNodeToNode(TYPE_ID(KGCA41B::C_Transform), TYPE_ID(KGCA41B::C_Effect));
+	transform_tree_.AddNodeToNode(TYPE_ID(reality::C_Transform), TYPE_ID(reality::C_Effect));
 	transform_tree_.root_node->OnUpdate(registry, entity_id_);
 }
 

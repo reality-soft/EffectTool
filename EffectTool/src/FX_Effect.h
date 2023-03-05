@@ -1,7 +1,7 @@
 #pragma once
 #include "FX_BaseEffectActor.h"
 
-namespace KGCA41B {
+namespace reality {
 	class FX_Effect : public FX_BaseEffectActor
 	{
 	public:

@@ -2,16 +2,16 @@
 #include "Engine_include.h"
 #include "DataTypes.h"
 
-namespace KGCA41B
+namespace reality
 {
-	class WG_MainMenu : public KGCA41B::GuiWidget
+	class WG_MainMenu : public reality::GuiWidget
 	{
 	public:
 		virtual void Update() override;
 		virtual void Render() override;
 	};
 
-	class WG_EffectWindow : public KGCA41B::GuiWidget
+	class WG_EffectWindow : public reality::GuiWidget
 	{
 	public:
 		virtual void Update() override;

@@ -5,9 +5,9 @@
 #include "StageActor.h"
 #include "FX_Effect.h"
 
-namespace KGCA41B
+namespace reality
 {
-	class EffectTool : public KGCA41B::Scene
+	class EffectTool : public reality::Scene
 	{
 	public:
 		entt::registry		reg_effect_tool_;

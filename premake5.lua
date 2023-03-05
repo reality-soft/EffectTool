@@ -27,11 +27,11 @@ project "EffectTool"
 
 	includedirs
 	{
-		"../KGCA41B_TeamProj/Engine/vendor/spdlog/include",
-		"../KGCA41B_TeamProj/Engine/src",
-		"../KGCA41B_TeamProj/Engine/src/Engine",
-		"../KGCA41B_TeamProj/Engine/src/ECS",
-		"../KGCA41B_TeamProj/Engine/src/Engine/SingletonClass",
+		"../reality_TeamProj/Engine/vendor/spdlog/include",
+		"../reality_TeamProj/Engine/src",
+		"../reality_TeamProj/Engine/src/Engine",
+		"../reality_TeamProj/Engine/src/ECS",
+		"../reality_TeamProj/Engine/src/Engine/SingletonClass",
 		"../SDK/DirectXTK/include",
 		"../SDK/FBXSDK/include",
 		"../SDK/FMOD/include",

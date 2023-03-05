@@ -1,8 +1,8 @@
 #include "SceneMgr.h"
 
-using namespace KGCA41B;
+using namespace reality;
 
-void KGCA41B::SceneMgr::PushScene(string id, Scene* scene)
+void reality::SceneMgr::PushScene(string id, Scene* scene)
 {
 	if (resdic_scene.find(id) != resdic_scene.end())
 		return;
@@ -10,7 +10,7 @@ void KGCA41B::SceneMgr::PushScene(string id, Scene* scene)
 	resdic_scene.insert({ id, scene });
 }
 
-Scene* KGCA41B::SceneMgr::LoadScene(string id)
+Scene* reality::SceneMgr::LoadScene(string id)
 {
 	if (resdic_scene.find(id) == resdic_scene.end())
 		return nullptr;

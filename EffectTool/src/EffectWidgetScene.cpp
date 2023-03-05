@@ -1,17 +1,17 @@
 #include "EffectWidgetScene.h"
 
-void KGCA41B::EffectWidgetScene::OnInit()
+void reality::EffectWidgetScene::OnInit()
 {
 	rt_id = "Widget";
 	RENDER_TARGET->MakeRT(rt_id, ENGINE->GetWindowSize().x, ENGINE->GetWindowSize().y);
 	
 }
 
-void KGCA41B::EffectWidgetScene::OnUpdate()
+void reality::EffectWidgetScene::OnUpdate()
 {
 }
 
-void KGCA41B::EffectWidgetScene::OnRender()
+void reality::EffectWidgetScene::OnRender()
 {
 	auto rt = RENDER_TARGET->LoadRT(rt_id);
 	rt->SetRenderTarget();
@@ -20,6 +20,6 @@ void KGCA41B::EffectWidgetScene::OnRender()
 	rt->SetRenderTarget();
 }
 
-void KGCA41B::EffectWidgetScene::OnRelease()
+void reality::EffectWidgetScene::OnRelease()
 {
 }

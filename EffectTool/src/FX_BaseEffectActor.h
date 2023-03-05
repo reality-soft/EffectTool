@@ -2,7 +2,7 @@
 #include "DataTypes.h"
 #include "Actor.h"
 
-namespace KGCA41B
+namespace reality
 {
 	class FX_BaseEffectActor : public Actor
 	{
