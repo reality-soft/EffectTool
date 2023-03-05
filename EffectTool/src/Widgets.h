@@ -32,11 +32,6 @@ namespace KGCA41B
 		void	SelectTexture(string& id);
 		void	SelectSprite(string& id);
 	private:
-		void	ComputeColorTimeline(map<int, XMFLOAT4>& timeline, XMFLOAT4* arr);
-		void	ComputeSizeTimeline(map<int, XMFLOAT3>& timeline, XMFLOAT3* arr);
-		void	ComputeRotationTimeline(map<int, float>& timeline, float* arr);
-		void	ComputeVelocityTimeline(map<int, XMFLOAT3>& timeline, XMFLOAT3* arr);
-	private:
 		void	LoadingData();
 	private:
 		void	LoadingSpriteData(string path);
@@ -51,10 +46,10 @@ namespace KGCA41B
 	private:
 		E_EffectType	type_;
 	private:
-		UVSprite							uv_sprite_data_;
-		TextureSprite						tex_sprite_data_;
-		Emitter								emitter_data_;
-		map<string, shared_ptr<Emitter>>	effect_data_;
+		UVSprite				uv_sprite_data_;
+		TextureSprite			tex_sprite_data_;
+		Emitter					emitter_data_;
+		map<string, Emitter>	effect_data_;
 	
 	};
 }

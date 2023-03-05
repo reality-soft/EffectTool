@@ -2,6 +2,7 @@
 #include "imfilebrowser.h"
 #include "SceneMgr.h"
 #include "EffectTool.h"
+#include <regex>
 
 using namespace KGCA41B;
 
@@ -123,7 +124,7 @@ void WG_EffectWindow::Render()
 				{
 					auto scene = (EffectTool*)SCENE->LoadScene("EffectTool");
 					if (scene)
-						scene->AddEmitter(make_shared<Emitter>(emitter_data_));
+						scene->AddEmitter(emitter_data_);
 				}
 				if (ImGui::Button("Reset Emitter Data"))
 				{
@@ -476,7 +477,7 @@ void WG_EffectWindow::EmitterBoard(Emitter& emitter)
 				if (ImGui::Button("Add Color to Timeline"))
 				{
 					emitter.color_timeline_map[color_lifetime] = color_to_add;
-					ComputeColorTimeline(emitter.color_timeline_map, emitter.color_timeline);
+					RESOURCE->ComputeColorTimeline(emitter.color_timeline_map, emitter.color_timeline);
 				}
 			}
 			break;
@@ -564,7 +565,7 @@ void WG_EffectWindow::EmitterBoard(Emitter& emitter)
 				if (ImGui::Button("Add Size to Timeline"))
 				{
 					emitter.size_timeline_map[size_lifetime] = size_to_add;
-					ComputeSizeTimeline(emitter.size_timeline_map, emitter.size_timeline);
+					RESOURCE->ComputeSizeTimeline(emitter.size_timeline_map, emitter.size_timeline);
 				}
 			}
 			break;
@@ -645,7 +646,7 @@ void WG_EffectWindow::EmitterBoard(Emitter& emitter)
 				if (ImGui::Button("Add Rotation to Timeline"))
 				{
 					emitter.rotation_timeline_map[rot_lifetime] = rot_to_add;
-					ComputeRotationTimeline(emitter.rotation_timeline_map, emitter.rotation_timeline);
+					RESOURCE->ComputeRotationTimeline(emitter.rotation_timeline_map, emitter.rotation_timeline);
 				}
 			}
 			break;
@@ -748,7 +749,7 @@ void WG_EffectWindow::EmitterBoard(Emitter& emitter)
 				if (ImGui::Button("Add Vel to Timeline"))
 				{
 					emitter.velocity_timeline_map[vel_lifetime] = vel_to_add;
-					ComputeVelocityTimeline(emitter.velocity_timeline_map, emitter.velocity_timeline);
+					RESOURCE->ComputeVelocityTimeline(emitter.velocity_timeline_map, emitter.velocity_timeline);
 				}
 			}
 			break;
@@ -794,7 +795,7 @@ void WG_EffectWindow::EffectBoard()
 			item_current_idx = 0;
 
 		vector<string> emitter_vec;
-		shared_ptr<Emitter> cur_emitter;
+		Emitter* cur_emitter = nullptr;
 		{
 
 			for (auto iter = effect_data_.begin(); iter != effect_data_.end(); ++iter)
@@ -821,7 +822,7 @@ void WG_EffectWindow::EffectBoard()
 				{
 					auto select = emitter_vec[item_current_idx];
 
-					cur_emitter = effect_data_[select];
+					cur_emitter = &effect_data_[select];
 				}
 
 			}
@@ -840,9 +841,9 @@ void WG_EffectWindow::EffectBoard()
 
 			if (fileDialog.HasSelected())
 			{
-				auto emitter = make_shared<Emitter>();
+				Emitter emitter;
 				string path = fileDialog.GetSelected().string();
-				LoadingEmitterData(path, *emitter.get());
+				LoadingEmitterData(path, emitter);
 
 				// 이름 파싱
 				auto splited_str = split(path, '\\');
@@ -869,7 +870,7 @@ void WG_EffectWindow::EffectBoard()
 		// Emitter 수정
 		if (cur_emitter != nullptr)
 		{
-			EmitterBoard(*cur_emitter.get());
+			EmitterBoard(*cur_emitter);
 			if (ImGui::Button("Emitter Render"))
 			{
 				auto scene = (EffectTool*)SCENE->LoadScene("EffectTool");
@@ -877,7 +878,7 @@ void WG_EffectWindow::EffectBoard()
 				{
 					scene->ResetEmitter();
 					cur_emitter->particles.clear();
-					scene->AddEmitter(cur_emitter);
+					scene->AddEmitter(*cur_emitter);
 				}
 
 			}
@@ -902,11 +903,7 @@ void WG_EffectWindow::EffectBoard()
 			if (scene)
 			{
 				scene->ResetEmitter();
-				for (auto pair : effect_data_)
-				{
-					pair.second->particles.clear();
-					scene->AddEmitter(pair.second);
-				}
+				scene->AddEffect(effect_data_);
 			}
 
 		}
@@ -1218,8 +1215,6 @@ void WG_EffectWindow::SelectSprite(string& id)
 		id = sprite_id[item_current_idx];
 }
 
-
-
 // 세이브 / 로드 메소드들
 void WG_EffectWindow::LoadingData()
 {
@@ -1308,307 +1303,330 @@ void WG_EffectWindow::LoadingSpriteData(string path)
 	}
 }
 
+//void WG_EffectWindow::LoadingEmitterData(string path, Emitter& emitter)
+//{
+//	auto strs1 = split(path, '\\');
+//	auto name = strs1[max((int)strs1.size() - 1, 0)];
+//	auto strs2 = split(name, '.');
+//	name = strs2[0];
+//
+//	auto sheet = DATA->LoadSheet(name);
+//
+//	if (sheet == NULL)
+//	{
+//		DATA->LoadSheetFile(path);
+//		sheet = DATA->LoadSheet(name);
+//	}
+//
+//	if (sheet == NULL)
+//		return;
+//
+//	auto effect = sheet->LoadItem(name);
+//
+//	// type
+//	emitter.type = (E_EffectType)stoi(effect->GetValue("type"));
+//
+//	// sprite_id
+//	emitter.sprite_id = effect->GetValue("sprite_id");
+//
+//	// emit_type
+//	emitter.emit_type = (E_EmitType)stoi(effect->GetValue("emit_type"));
+//	// emit_once
+//	emitter.emit_once = stoi(effect->GetValue("emit_once"));
+//	// emit_per_second
+//	emitter.emit_per_second = stoi(effect->GetValue("emit_per_second"));
+//	// emit_time
+//	emitter.emit_time = stof(effect->GetValue("emit_time"));
+//
+//	
+//
+//	vector<string> splited_str;
+//	vector<string> splited_str2;
+//
+//	// life_time
+//	{
+//		splited_str = split(effect->GetValue("life_time"), ' ');
+//		if (splited_str.size() < 2)
+//			return;
+//		emitter.life_time[0] = stof(splited_str[0]);
+//		emitter.life_time[1] = stof(splited_str[1]);
+//	}
+//
+//	// SettingType
+//	{
+//		emitter.color_setting_type = (E_EmitterAttributeType)stoi(effect->GetValue("color_setting_type"));
+//		emitter.size_setting_type = (E_EmitterAttributeType)stoi(effect->GetValue("size_setting_type"));
+//		emitter.rotation_setting_type = (E_EmitterAttributeType)stoi(effect->GetValue("rotation_setting_type"));
+//		emitter.position_setting_type = (E_EmitterAttributeType)stoi(effect->GetValue("position_setting_type"));
+//	}
+//
+//	// COLOR
+//	{
+//		// initial_color
+//		splited_str = split(effect->GetValue("initial_color"), ' ');
+//		if (splited_str.size() < 4)
+//			return;
+//		emitter.initial_color.x = stof(splited_str[0]);
+//		emitter.initial_color.y = stof(splited_str[1]);
+//		emitter.initial_color.z = stof(splited_str[2]);
+//		emitter.initial_color.w = stof(splited_str[3]);
+//
+//		// color_timeline_map
+//		{
+//			string str_color_map = effect->GetValue("color_timeline_map");
+//			if (str_color_map.size())
+//			{
+//				splited_str = split(str_color_map, '~');
+//				for (auto value : splited_str)
+//				{
+//					auto splited_map_value = split(value, '-');
+//
+//					if (splited_map_value.size() == 0)
+//						return;
+//					int time = stoi(splited_map_value[0]);
+//
+//					auto splited_map_xyzw = split(splited_map_value[1], ' ');
+//					XMFLOAT4 color = { stof(splited_map_xyzw[0]), stof(splited_map_xyzw[1]), stof(splited_map_xyzw[2]), stof(splited_map_xyzw[3]) };
+//
+//					emitter.color_timeline_map.insert({ time, color });
+//				}
+//				ComputeColorTimeline(emitter.color_timeline_map, emitter.color_timeline);
+//			}
+//		}
+//
+//	}
+//
+//	// SIZE
+//	{
+//		// initial_size
+//		{
+//			splited_str = split(effect->GetValue("initial_size"), '~');
+//			if (splited_str.size() < 2)
+//				return;
+//			// min
+//			splited_str2 = split(splited_str[0], ' ');
+//			if (splited_str2.size() < 3)
+//				return;
+//			emitter.initial_size[0].x = stof(splited_str2[0]);
+//			emitter.initial_size[0].y = stof(splited_str2[1]);
+//			emitter.initial_size[0].z = stof(splited_str2[2]);
+//			// max
+//			splited_str2 = split(splited_str[1], ' ');
+//			if (splited_str2.size() < 3)
+//				return;
+//			emitter.initial_size[1].x = stof(splited_str2[0]);
+//			emitter.initial_size[1].y = stof(splited_str2[1]);
+//			emitter.initial_size[1].z = stof(splited_str2[2]);
+//		}
+//		// add_size_per_lifetime
+//		{
+//			splited_str = split(effect->GetValue("add_size_per_lifetime"), '~');
+//			if (splited_str.size() < 2)
+//				return;
+//			// min
+//			splited_str2 = split(splited_str[0], ' ');
+//			if (splited_str2.size() < 3)
+//				return;
+//			emitter.add_size_per_lifetime[0].x = stof(splited_str2[0]);
+//			emitter.add_size_per_lifetime[0].y = stof(splited_str2[1]);
+//			emitter.add_size_per_lifetime[0].z = stof(splited_str2[2]);
+//			// max
+//			splited_str2 = split(splited_str[1], ' ');
+//			if (splited_str2.size() < 3)
+//				return;
+//			emitter.add_size_per_lifetime[1].x = stof(splited_str2[0]);
+//			emitter.add_size_per_lifetime[1].y = stof(splited_str2[1]);
+//			emitter.add_size_per_lifetime[1].z = stof(splited_str2[2]);
+//		}
+//		// size_timeline_map
+//		{
+//			string str_size_map = effect->GetValue("size_timeline_map");
+//			if (str_size_map.size())
+//			{
+//				splited_str = split(str_size_map, '~');
+//				for (auto value : splited_str)
+//				{
+//					auto splited_map_value = split(value, '-');
+//
+//					if (splited_map_value.size() == 0)
+//						return;
+//					int time = stoi(splited_map_value[0]);
+//
+//					auto splited_map_xyz = split(splited_map_value[1], ' ');
+//					XMFLOAT3 size = { stof(splited_map_xyz[0]), stof(splited_map_xyz[1]), stof(splited_map_xyz[2]) };
+//
+//					emitter.size_timeline_map.insert({ time, size });
+//				}
+//				ComputeSizeTimeline(emitter.size_timeline_map, emitter.size_timeline);
+//			}
+//		}
+//		
+//		
+//	}
+//	
+//	// ROTATION
+//	{
+//		// initial_rotation
+//		{
+//			splited_str = split(effect->GetValue("initial_rotation"), ' ');
+//			if (splited_str.size() < 2)
+//				return;
+//			emitter.initial_rotation[0] = stof(splited_str[0]);
+//			emitter.initial_rotation[1] = stof(splited_str[1]);
+//		}
+//		// add_rotation_per_lifetime
+//		{
+//			splited_str = split(effect->GetValue("add_rotation_per_lifetime"), ' ');
+//			if (splited_str.size() < 2)
+//				return;
+//			emitter.add_rotation_per_lifetime[0] = stof(splited_str[0]);
+//			emitter.add_rotation_per_lifetime[1] = stof(splited_str[1]);
+//		}
+//		// rotation_timeline_map
+//		{
+//			string str_rot_map = effect->GetValue("rotation_timeline_map");
+//			if (str_rot_map.size())
+//			{
+//				splited_str = split(str_rot_map, '~');
+//				for (auto value : splited_str)
+//				{
+//					auto splited_map_value = split(value, '-');
+//
+//					if (splited_map_value.size() == 0)
+//						return;
+//					int time = stoi(splited_map_value[0]);
+//
+//					auto splited_map_xyz = split(splited_map_value[1], ' ');
+//					float rotation = stof(splited_map_xyz[0]);
+//
+//					emitter.rotation_timeline_map.insert({ time, rotation });
+//				}
+//				ComputeRotationTimeline(emitter.rotation_timeline_map, emitter.rotation_timeline);
+//			}
+//		}
+//	}
+//
+//	// VELOCITY
+//	{
+//		// initial_position
+//		{
+//			splited_str = split(effect->GetValue("initial_position"), '~');
+//			if (splited_str.size() < 2)
+//				return;
+//			// min
+//			splited_str2 = split(splited_str[0], ' ');
+//			if (splited_str2.size() < 3)
+//				return;
+//			emitter.initial_position[0].x = stof(splited_str2[0]);
+//			emitter.initial_position[0].y = stof(splited_str2[1]);
+//			emitter.initial_position[0].z = stof(splited_str2[2]);
+//			// max
+//			splited_str2 = split(splited_str[1], ' ');
+//			if (splited_str2.size() < 3)
+//				return;
+//			emitter.initial_position[1].x = stof(splited_str2[0]);
+//			emitter.initial_position[1].y = stof(splited_str2[1]);
+//			emitter.initial_position[1].z = stof(splited_str2[2]);
+//		}
+//		// initial_velocity
+//		{
+//			splited_str = split(effect->GetValue("initial_velocity"), '~');
+//			if (splited_str.size() < 2)
+//				return;
+//			// min
+//			splited_str2 = split(splited_str[0], ' ');
+//			if (splited_str2.size() < 3)
+//				return;
+//			emitter.initial_velocity[0].x = stof(splited_str2[0]);
+//			emitter.initial_velocity[0].y = stof(splited_str2[1]);
+//			emitter.initial_velocity[0].z = stof(splited_str2[2]);
+//			// max
+//			splited_str2 = split(splited_str[1], ' ');
+//			if (splited_str2.size() < 3)
+//				return;
+//			emitter.initial_velocity[1].x = stof(splited_str2[0]);
+//			emitter.initial_velocity[1].y = stof(splited_str2[1]);
+//			emitter.initial_velocity[1].z = stof(splited_str2[2]);
+//		}
+//		// accelation_per_lifetime
+//		{
+//			splited_str = split(effect->GetValue("accelation_per_lifetime"), '~');
+//			if (splited_str.size() < 2)
+//				return;
+//			// min
+//			splited_str2 = split(splited_str[0], ' ');
+//			if (splited_str2.size() < 3)
+//				return;
+//			emitter.accelation_per_lifetime[0].x = stof(splited_str2[0]);
+//			emitter.accelation_per_lifetime[0].y = stof(splited_str2[1]);
+//			emitter.accelation_per_lifetime[0].z = stof(splited_str2[2]);
+//			// max
+//			splited_str2 = split(splited_str[1], ' ');
+//			if (splited_str2.size() < 3)
+//				return;
+//			emitter.accelation_per_lifetime[1].x = stof(splited_str2[0]);
+//			emitter.accelation_per_lifetime[1].y = stof(splited_str2[1]);
+//			emitter.accelation_per_lifetime[1].z = stof(splited_str2[2]);
+//		}
+//		// velocity_timeline_map
+//		{
+//			string str_vel_map = effect->GetValue("velocity_timeline_map");
+//			if (str_vel_map.size())
+//			{
+//				splited_str = split(str_vel_map, '~');
+//				for (auto value : splited_str)
+//				{
+//					auto splited_map_value = split(value, '-');
+//
+//					if (splited_map_value.size() == 0)
+//						return;
+//					int time = stoi(splited_map_value[0]);
+//
+//					auto splited_map_xyz = split(splited_map_value[1], ' ');
+//					XMFLOAT3 vel = { stof(splited_map_xyz[0]), stof(splited_map_xyz[1]), stof(splited_map_xyz[2]) };
+//
+//					emitter.velocity_timeline_map.insert({ time, vel });
+//				}
+//				ComputeVelocityTimeline(emitter.velocity_timeline_map, emitter.velocity_timeline);
+//			}
+//		}
+//	}
+//
+//	// GRAVITY
+//	emitter.gravity_on_off = stoi(effect->GetValue("gravity_on_off"));
+//
+//	// BS
+//	emitter.bs_state = (E_EffectBS)stoi(effect->GetValue("BS"));
+//
+//	// DS
+//	emitter.ds_state = (E_EffectDS)stoi(effect->GetValue("DS"));
+//
+//	emitter.vs_id = effect->GetValue("vs_id");
+//	emitter.geo_id = effect->GetValue("geo_id");
+//	emitter.mat_id = effect->GetValue("mat_id");
+//}
+
 void WG_EffectWindow::LoadingEmitterData(string path, Emitter& emitter)
 {
 	auto strs1 = split(path, '\\');
 	auto name = strs1[max((int)strs1.size() - 1, 0)];
 	auto strs2 = split(name, '.');
 	name = strs2[0];
-
+	
 	auto sheet = DATA->LoadSheet(name);
-
+	
 	if (sheet == NULL)
 	{
 		DATA->LoadSheetFile(path);
 		sheet = DATA->LoadSheet(name);
 	}
-
+	
 	if (sheet == NULL)
 		return;
-
-	auto effect = sheet->LoadItem(name);
-
-	// type
-	emitter.type = (E_EffectType)stoi(effect->GetValue("type"));
-
-	// sprite_id
-	emitter.sprite_id = effect->GetValue("sprite_id");
-
-	// emit_type
-	emitter.emit_type = (E_EmitType)stoi(effect->GetValue("emit_type"));
-	// emit_once
-	emitter.emit_once = stoi(effect->GetValue("emit_once"));
-	// emit_per_second
-	emitter.emit_per_second = stoi(effect->GetValue("emit_per_second"));
-	// emit_time
-	emitter.emit_time = stof(effect->GetValue("emit_time"));
-
 	
+	auto emitter_item = sheet->LoadItem(name);
 
-	vector<string> splited_str;
-	vector<string> splited_str2;
-
-	// life_time
-	{
-		splited_str = split(effect->GetValue("life_time"), ' ');
-		if (splited_str.size() < 2)
-			return;
-		emitter.life_time[0] = stof(splited_str[0]);
-		emitter.life_time[1] = stof(splited_str[1]);
-	}
-
-	// SettingType
-	{
-		emitter.color_setting_type = (E_EmitterAttributeType)stoi(effect->GetValue("color_setting_type"));
-		emitter.size_setting_type = (E_EmitterAttributeType)stoi(effect->GetValue("size_setting_type"));
-		emitter.rotation_setting_type = (E_EmitterAttributeType)stoi(effect->GetValue("rotation_setting_type"));
-		emitter.position_setting_type = (E_EmitterAttributeType)stoi(effect->GetValue("position_setting_type"));
-	}
-
-	// COLOR
-	{
-		// initial_color
-		splited_str = split(effect->GetValue("initial_color"), ' ');
-		if (splited_str.size() < 4)
-			return;
-		emitter.initial_color.x = stof(splited_str[0]);
-		emitter.initial_color.y = stof(splited_str[1]);
-		emitter.initial_color.z = stof(splited_str[2]);
-		emitter.initial_color.w = stof(splited_str[3]);
-
-		// color_timeline_map
-		{
-			string str_color_map = effect->GetValue("color_timeline_map");
-			if (str_color_map.size())
-			{
-				splited_str = split(str_color_map, '~');
-				for (auto value : splited_str)
-				{
-					auto splited_map_value = split(value, '-');
-
-					if (splited_map_value.size() == 0)
-						return;
-					int time = stoi(splited_map_value[0]);
-
-					auto splited_map_xyzw = split(splited_map_value[1], ' ');
-					XMFLOAT4 color = { stof(splited_map_xyzw[0]), stof(splited_map_xyzw[1]), stof(splited_map_xyzw[2]), stof(splited_map_xyzw[3]) };
-
-					emitter.color_timeline_map.insert({ time, color });
-				}
-				ComputeColorTimeline(emitter.color_timeline_map, emitter.color_timeline);
-			}
-		}
-
-	}
-
-	// SIZE
-	{
-		// initial_size
-		{
-			splited_str = split(effect->GetValue("initial_size"), '~');
-			if (splited_str.size() < 2)
-				return;
-			// min
-			splited_str2 = split(splited_str[0], ' ');
-			if (splited_str2.size() < 3)
-				return;
-			emitter.initial_size[0].x = stof(splited_str2[0]);
-			emitter.initial_size[0].y = stof(splited_str2[1]);
-			emitter.initial_size[0].z = stof(splited_str2[2]);
-			// max
-			splited_str2 = split(splited_str[1], ' ');
-			if (splited_str2.size() < 3)
-				return;
-			emitter.initial_size[1].x = stof(splited_str2[0]);
-			emitter.initial_size[1].y = stof(splited_str2[1]);
-			emitter.initial_size[1].z = stof(splited_str2[2]);
-		}
-		// add_size_per_lifetime
-		{
-			splited_str = split(effect->GetValue("add_size_per_lifetime"), '~');
-			if (splited_str.size() < 2)
-				return;
-			// min
-			splited_str2 = split(splited_str[0], ' ');
-			if (splited_str2.size() < 3)
-				return;
-			emitter.add_size_per_lifetime[0].x = stof(splited_str2[0]);
-			emitter.add_size_per_lifetime[0].y = stof(splited_str2[1]);
-			emitter.add_size_per_lifetime[0].z = stof(splited_str2[2]);
-			// max
-			splited_str2 = split(splited_str[1], ' ');
-			if (splited_str2.size() < 3)
-				return;
-			emitter.add_size_per_lifetime[1].x = stof(splited_str2[0]);
-			emitter.add_size_per_lifetime[1].y = stof(splited_str2[1]);
-			emitter.add_size_per_lifetime[1].z = stof(splited_str2[2]);
-		}
-		// size_timeline_map
-		{
-			string str_size_map = effect->GetValue("size_timeline_map");
-			if (str_size_map.size())
-			{
-				splited_str = split(str_size_map, '~');
-				for (auto value : splited_str)
-				{
-					auto splited_map_value = split(value, '-');
-
-					if (splited_map_value.size() == 0)
-						return;
-					int time = stoi(splited_map_value[0]);
-
-					auto splited_map_xyz = split(splited_map_value[1], ' ');
-					XMFLOAT3 size = { stof(splited_map_xyz[0]), stof(splited_map_xyz[1]), stof(splited_map_xyz[2]) };
-
-					emitter.size_timeline_map.insert({ time, size });
-				}
-				ComputeSizeTimeline(emitter.size_timeline_map, emitter.size_timeline);
-			}
-		}
-		
-		
-	}
-	
-	// ROTATION
-	{
-		// initial_rotation
-		{
-			splited_str = split(effect->GetValue("initial_rotation"), ' ');
-			if (splited_str.size() < 2)
-				return;
-			emitter.initial_rotation[0] = stof(splited_str[0]);
-			emitter.initial_rotation[1] = stof(splited_str[1]);
-		}
-		// add_rotation_per_lifetime
-		{
-			splited_str = split(effect->GetValue("add_rotation_per_lifetime"), ' ');
-			if (splited_str.size() < 2)
-				return;
-			emitter.add_rotation_per_lifetime[0] = stof(splited_str[0]);
-			emitter.add_rotation_per_lifetime[1] = stof(splited_str[1]);
-		}
-		// rotation_timeline_map
-		{
-			string str_rot_map = effect->GetValue("rotation_timeline_map");
-			if (str_rot_map.size())
-			{
-				splited_str = split(str_rot_map, '~');
-				for (auto value : splited_str)
-				{
-					auto splited_map_value = split(value, '-');
-
-					if (splited_map_value.size() == 0)
-						return;
-					int time = stoi(splited_map_value[0]);
-
-					auto splited_map_xyz = split(splited_map_value[1], ' ');
-					float rotation = stof(splited_map_xyz[0]);
-
-					emitter.rotation_timeline_map.insert({ time, rotation });
-				}
-				ComputeRotationTimeline(emitter.rotation_timeline_map, emitter.rotation_timeline);
-			}
-		}
-	}
-
-	// VELOCITY
-	{
-		// initial_position
-		{
-			splited_str = split(effect->GetValue("initial_position"), '~');
-			if (splited_str.size() < 2)
-				return;
-			// min
-			splited_str2 = split(splited_str[0], ' ');
-			if (splited_str2.size() < 3)
-				return;
-			emitter.initial_position[0].x = stof(splited_str2[0]);
-			emitter.initial_position[0].y = stof(splited_str2[1]);
-			emitter.initial_position[0].z = stof(splited_str2[2]);
-			// max
-			splited_str2 = split(splited_str[1], ' ');
-			if (splited_str2.size() < 3)
-				return;
-			emitter.initial_position[1].x = stof(splited_str2[0]);
-			emitter.initial_position[1].y = stof(splited_str2[1]);
-			emitter.initial_position[1].z = stof(splited_str2[2]);
-		}
-		// initial_velocity
-		{
-			splited_str = split(effect->GetValue("initial_velocity"), '~');
-			if (splited_str.size() < 2)
-				return;
-			// min
-			splited_str2 = split(splited_str[0], ' ');
-			if (splited_str2.size() < 3)
-				return;
-			emitter.initial_velocity[0].x = stof(splited_str2[0]);
-			emitter.initial_velocity[0].y = stof(splited_str2[1]);
-			emitter.initial_velocity[0].z = stof(splited_str2[2]);
-			// max
-			splited_str2 = split(splited_str[1], ' ');
-			if (splited_str2.size() < 3)
-				return;
-			emitter.initial_velocity[1].x = stof(splited_str2[0]);
-			emitter.initial_velocity[1].y = stof(splited_str2[1]);
-			emitter.initial_velocity[1].z = stof(splited_str2[2]);
-		}
-		// accelation_per_lifetime
-		{
-			splited_str = split(effect->GetValue("accelation_per_lifetime"), '~');
-			if (splited_str.size() < 2)
-				return;
-			// min
-			splited_str2 = split(splited_str[0], ' ');
-			if (splited_str2.size() < 3)
-				return;
-			emitter.accelation_per_lifetime[0].x = stof(splited_str2[0]);
-			emitter.accelation_per_lifetime[0].y = stof(splited_str2[1]);
-			emitter.accelation_per_lifetime[0].z = stof(splited_str2[2]);
-			// max
-			splited_str2 = split(splited_str[1], ' ');
-			if (splited_str2.size() < 3)
-				return;
-			emitter.accelation_per_lifetime[1].x = stof(splited_str2[0]);
-			emitter.accelation_per_lifetime[1].y = stof(splited_str2[1]);
-			emitter.accelation_per_lifetime[1].z = stof(splited_str2[2]);
-		}
-		// velocity_timeline_map
-		{
-			string str_vel_map = effect->GetValue("velocity_timeline_map");
-			if (str_vel_map.size())
-			{
-				splited_str = split(str_vel_map, '~');
-				for (auto value : splited_str)
-				{
-					auto splited_map_value = split(value, '-');
-
-					if (splited_map_value.size() == 0)
-						return;
-					int time = stoi(splited_map_value[0]);
-
-					auto splited_map_xyz = split(splited_map_value[1], ' ');
-					XMFLOAT3 vel = { stof(splited_map_xyz[0]), stof(splited_map_xyz[1]), stof(splited_map_xyz[2]) };
-
-					emitter.velocity_timeline_map.insert({ time, vel });
-				}
-				ComputeVelocityTimeline(emitter.velocity_timeline_map, emitter.velocity_timeline);
-			}
-		}
-	}
-
-	// GRAVITY
-	emitter.gravity_on_off = stoi(effect->GetValue("gravity_on_off"));
-
-	// BS
-	emitter.bs_state = (E_EffectBS)stoi(effect->GetValue("BS"));
-
-	// DS
-	emitter.ds_state = (E_EffectDS)stoi(effect->GetValue("DS"));
-
-	emitter.vs_id = effect->GetValue("vs_id");
-	emitter.geo_id = effect->GetValue("geo_id");
-	emitter.mat_id = effect->GetValue("mat_id");
+	RESOURCE->ParseEmitter(emitter_item.get(), emitter);
 }
 
 void WG_EffectWindow::LoadingEffectData(string path)
@@ -1618,311 +1636,18 @@ void WG_EffectWindow::LoadingEffectData(string path)
 	auto strs2 = split(name, '.');
 	name = strs2[0];
 
-	auto sheet = DATA->LoadSheet(name);
+	auto effect = RESOURCE->UseResource<Effect>(name);
 
-	if (sheet == NULL)
+	if (!effect)
 	{
-		DATA->LoadSheetFile(path);
-		sheet = DATA->LoadSheet(name);
+		regex_replace(path, regex("\\"), "/");
+		if (!RESOURCE->ImportEffect(path))
+			return;
+		effect = RESOURCE->UseResource<Effect>(name);
 	}
 
-	if (sheet == NULL)
-		return;
-
-	for (auto pair : sheet->resdic_item)
-	{
-		auto effect = pair.second;
-
-		auto emitter = make_shared<Emitter>();
-
-
-		// type
-		emitter->type = (E_EffectType)stoi(effect->GetValue("type"));
-
-		// sprite_id
-		emitter->sprite_id = effect->GetValue("sprite_id");
-
-		// emit_type
-		emitter->emit_type = (E_EmitType)stoi(effect->GetValue("emit_type"));
-		// emit_once
-		emitter->emit_once = stoi(effect->GetValue("emit_once"));
-		// emit_per_second
-		emitter->emit_per_second = stoi(effect->GetValue("emit_per_second"));
-		// emit_time
-		emitter->emit_time = stof(effect->GetValue("emit_time"));
-
-
-
-		vector<string> splited_str;
-		vector<string> splited_str2;
-
-		// life_time
-		{
-			splited_str = split(effect->GetValue("life_time"), ' ');
-			if (splited_str.size() < 2)
-				return;
-			emitter->life_time[0] = stof(splited_str[0]);
-			emitter->life_time[1] = stof(splited_str[1]);
-		}
-
-		// SettingType
-		{
-			emitter->color_setting_type = (E_EmitterAttributeType)stoi(effect->GetValue("color_setting_type"));
-			emitter->size_setting_type = (E_EmitterAttributeType)stoi(effect->GetValue("size_setting_type"));
-			emitter->rotation_setting_type = (E_EmitterAttributeType)stoi(effect->GetValue("rotation_setting_type"));
-			emitter->position_setting_type = (E_EmitterAttributeType)stoi(effect->GetValue("position_setting_type"));
-		}
-
-		// COLOR
-		{
-			// initial_color
-			splited_str = split(effect->GetValue("initial_color"), ' ');
-			if (splited_str.size() < 4)
-				return;
-			emitter->initial_color.x = stof(splited_str[0]);
-			emitter->initial_color.y = stof(splited_str[1]);
-			emitter->initial_color.z = stof(splited_str[2]);
-			emitter->initial_color.w = stof(splited_str[3]);
-
-			// color_timeline_map
-			{
-				string str_color_map = effect->GetValue("color_timeline_map");
-				if (str_color_map.size())
-				{
-					splited_str = split(str_color_map, '~');
-					for (auto value : splited_str)
-					{
-						auto splited_map_value = split(value, '-');
-
-						if (splited_map_value.size() == 0)
-							return;
-						int time = stoi(splited_map_value[0]);
-
-						auto splited_map_xyzw = split(splited_map_value[1], ' ');
-						XMFLOAT4 color = { stof(splited_map_xyzw[0]), stof(splited_map_xyzw[1]), stof(splited_map_xyzw[2]), stof(splited_map_xyzw[3]) };
-
-						emitter->color_timeline_map.insert({ time, color });
-					}
-					ComputeColorTimeline(emitter->color_timeline_map, emitter->color_timeline);
-				}
-			}
-
-		}
-
-		// SIZE
-		{
-			// initial_size
-			{
-				splited_str = split(effect->GetValue("initial_size"), '~');
-				if (splited_str.size() < 2)
-					return;
-				// min
-				splited_str2 = split(splited_str[0], ' ');
-				if (splited_str2.size() < 3)
-					return;
-				emitter->initial_size[0].x = stof(splited_str2[0]);
-				emitter->initial_size[0].y = stof(splited_str2[1]);
-				emitter->initial_size[0].z = stof(splited_str2[2]);
-				// max
-				splited_str2 = split(splited_str[1], ' ');
-				if (splited_str2.size() < 3)
-					return;
-				emitter->initial_size[1].x = stof(splited_str2[0]);
-				emitter->initial_size[1].y = stof(splited_str2[1]);
-				emitter->initial_size[1].z = stof(splited_str2[2]);
-			}
-			// add_size_per_lifetime
-			{
-				splited_str = split(effect->GetValue("add_size_per_lifetime"), '~');
-				if (splited_str.size() < 2)
-					return;
-				// min
-				splited_str2 = split(splited_str[0], ' ');
-				if (splited_str2.size() < 3)
-					return;
-				emitter->add_size_per_lifetime[0].x = stof(splited_str2[0]);
-				emitter->add_size_per_lifetime[0].y = stof(splited_str2[1]);
-				emitter->add_size_per_lifetime[0].z = stof(splited_str2[2]);
-				// max
-				splited_str2 = split(splited_str[1], ' ');
-				if (splited_str2.size() < 3)
-					return;
-				emitter->add_size_per_lifetime[1].x = stof(splited_str2[0]);
-				emitter->add_size_per_lifetime[1].y = stof(splited_str2[1]);
-				emitter->add_size_per_lifetime[1].z = stof(splited_str2[2]);
-			}
-			// size_timeline_map
-			{
-				string str_size_map = effect->GetValue("size_timeline_map");
-				if (str_size_map.size())
-				{
-					splited_str = split(str_size_map, '~');
-					for (auto value : splited_str)
-					{
-						auto splited_map_value = split(value, '-');
-
-						if (splited_map_value.size() == 0)
-							return;
-						int time = stoi(splited_map_value[0]);
-
-						auto splited_map_xyz = split(splited_map_value[1], ' ');
-						XMFLOAT3 size = { stof(splited_map_xyz[0]), stof(splited_map_xyz[1]), stof(splited_map_xyz[2]) };
-
-						emitter->size_timeline_map.insert({ time, size });
-					}
-					ComputeSizeTimeline(emitter->size_timeline_map, emitter->size_timeline);
-				}
-			}
-
-
-		}
-
-		// ROTATION
-		{
-			// initial_rotation
-			{
-				splited_str = split(effect->GetValue("initial_rotation"), ' ');
-				if (splited_str.size() < 2)
-					return;
-				emitter->initial_rotation[0] = stof(splited_str[0]);
-				emitter->initial_rotation[1] = stof(splited_str[1]);
-			}
-			// add_rotation_per_lifetime
-			{
-				splited_str = split(effect->GetValue("add_rotation_per_lifetime"), ' ');
-				if (splited_str.size() < 2)
-					return;
-				emitter->add_rotation_per_lifetime[0] = stof(splited_str[0]);
-				emitter->add_rotation_per_lifetime[1] = stof(splited_str[1]);
-			}
-			// rotation_timeline_map
-			{
-				string str_rot_map = effect->GetValue("rotation_timeline_map");
-				if (str_rot_map.size())
-				{
-					splited_str = split(str_rot_map, '~');
-					for (auto value : splited_str)
-					{
-						auto splited_map_value = split(value, '-');
-
-						if (splited_map_value.size() == 0)
-							return;
-						int time = stoi(splited_map_value[0]);
-
-						auto splited_map_xyz = split(splited_map_value[1], ' ');
-						float rotation = stof(splited_map_xyz[0]);
-
-
-						emitter->rotation_timeline_map.insert({ time, rotation });
-					}
-					ComputeRotationTimeline(
-						emitter->rotation_timeline_map, emitter->rotation_timeline);
-				}
-			}
-		}
-
-		// VELOCITY
-		{
-			// initial_position
-			{
-				splited_str = split(effect->GetValue("initial_position"), '~');
-				if (splited_str.size() < 2)
-					return;
-				// min
-				splited_str2 = split(splited_str[0], ' ');
-				if (splited_str2.size() < 3)
-					return;
-				emitter->initial_position[0].x = stof(splited_str2[0]);
-				emitter->initial_position[0].y = stof(splited_str2[1]);
-				emitter->initial_position[0].z = stof(splited_str2[2]);
-				// max
-				splited_str2 = split(splited_str[1], ' ');
-				if (splited_str2.size() < 3)
-					return;
-				emitter->initial_position[1].x = stof(splited_str2[0]);
-				emitter->initial_position[1].y = stof(splited_str2[1]);
-				emitter->initial_position[1].z = stof(splited_str2[2]);
-			}
-			// initial_velocity
-			{
-				splited_str = split(effect->GetValue("initial_velocity"), '~');
-				if (splited_str.size() < 2)
-					return;
-				// min
-				splited_str2 = split(splited_str[0], ' ');
-				if (splited_str2.size() < 3)
-					return;
-				emitter->initial_velocity[0].x = stof(splited_str2[0]);
-				emitter->initial_velocity[0].y = stof(splited_str2[1]);
-				emitter->initial_velocity[0].z = stof(splited_str2[2]);
-				// max
-				splited_str2 = split(splited_str[1], ' ');
-				if (splited_str2.size() < 3)
-					return;
-				emitter->initial_velocity[1].x = stof(splited_str2[0]);
-				emitter->initial_velocity[1].y = stof(splited_str2[1]);
-				emitter->initial_velocity[1].z = stof(splited_str2[2]);
-			}
-			// accelation_per_lifetime
-			{
-				splited_str = split(effect->GetValue("accelation_per_lifetime"), '~');
-				if (splited_str.size() < 2)
-					return;
-				// min
-				splited_str2 = split(splited_str[0], ' ');
-				if (splited_str2.size() < 3)
-					return;
-				emitter->accelation_per_lifetime[0].x = stof(splited_str2[0]);
-				emitter->accelation_per_lifetime[0].y = stof(splited_str2[1]);
-				emitter->accelation_per_lifetime[0].z = stof(splited_str2[2]);
-				// max
-				splited_str2 = split(splited_str[1], ' ');
-				if (splited_str2.size() < 3)
-					return;
-				emitter->accelation_per_lifetime[1].x = stof(splited_str2[0]);
-				emitter->accelation_per_lifetime[1].y = stof(splited_str2[1]);
-				emitter->accelation_per_lifetime[1].z = stof(splited_str2[2]);
-			}
-			// velocity_timeline_map
-			{
-				string str_vel_map = effect->GetValue("velocity_timeline_map");
-				if (str_vel_map.size())
-				{
-					splited_str = split(str_vel_map, '~');
-					for (auto value : splited_str)
-					{
-						auto splited_map_value = split(value, '-');
-
-						if (splited_map_value.size() == 0)
-							return;
-						int time = stoi(splited_map_value[0]);
-
-						auto splited_map_xyz = split(splited_map_value[1], ' ');
-						XMFLOAT3 vel = { stof(splited_map_xyz[0]), stof(splited_map_xyz[1]), stof(splited_map_xyz[2]) };
-
-						emitter->velocity_timeline_map.insert({ time, vel });
-					}
-					ComputeVelocityTimeline(emitter->velocity_timeline_map, emitter->velocity_timeline);
-				}
-			}
-		}
-
-		// GRAVITY
-		emitter->gravity_on_off = stoi(effect->GetValue("gravity_on_off"));
-
-		// BS
-		emitter->bs_state = (E_EffectBS)stoi(effect->GetValue("BS"));
-
-		// DS
-		emitter->ds_state = (E_EffectDS)stoi(effect->GetValue("DS"));
-
-		emitter->vs_id = effect->GetValue("vs_id");
-		emitter->geo_id = effect->GetValue("geo_id");
-		emitter->mat_id = effect->GetValue("mat_id");
-
-		effect_data_.insert({ pair.first, emitter });
-	}
-
+	for(auto pair : effect->emitters)
+		effect_data_.insert({ pair.first, pair.second });
 
 }
 
@@ -2171,382 +1896,172 @@ void WG_EffectWindow::SaveEffect(string name)
 
 	auto sheet = DATA->AddNewSheet(sheetName);
 
-	for (auto& pair : effect_data_)
-	{
-		auto effect = sheet->AddItem(pair.first);
-		auto emitter = pair.second;
+	//for (auto& pair : effect_data_)
+	//{
+	//	auto effect = sheet->AddItem(pair.first);
+	//	auto emitter = pair.second;
 
-		// 카테고리 추가
-		sheet->AddCategory("type");
+	//	// 카테고리 추가
+	//	sheet->AddCategory("type");
 
-		sheet->AddCategory("sprite_id");
+	//	sheet->AddCategory("sprite_id");
 
-		sheet->AddCategory("emit_type");
-		sheet->AddCategory("emit_per_second");
-		sheet->AddCategory("emit_once");
-		sheet->AddCategory("emit_time");
+	//	sheet->AddCategory("emit_type");
+	//	sheet->AddCategory("emit_per_second");
+	//	sheet->AddCategory("emit_once");
+	//	sheet->AddCategory("emit_time");
 
-		sheet->AddCategory("life_time");
+	//	sheet->AddCategory("life_time");
 
-		sheet->AddCategory("color_setting_type");
-		sheet->AddCategory("size_setting_type");
-		sheet->AddCategory("rotation_setting_type");
-		sheet->AddCategory("position_setting_type");
+	//	sheet->AddCategory("color_setting_type");
+	//	sheet->AddCategory("size_setting_type");
+	//	sheet->AddCategory("rotation_setting_type");
+	//	sheet->AddCategory("position_setting_type");
 
-		// COLOR
-		sheet->AddCategory("initial_color");
-		sheet->AddCategory("color_timeline_map");
+	//	// COLOR
+	//	sheet->AddCategory("initial_color");
+	//	sheet->AddCategory("color_timeline_map");
 
-		// SIZE
-		sheet->AddCategory("initial_size");
-		sheet->AddCategory("add_size_per_lifetime");
-		sheet->AddCategory("size_timeline_map");
+	//	// SIZE
+	//	sheet->AddCategory("initial_size");
+	//	sheet->AddCategory("add_size_per_lifetime");
+	//	sheet->AddCategory("size_timeline_map");
 
-		// ROTATION
-		sheet->AddCategory("initial_rotation");
-		sheet->AddCategory("add_rotation_per_lifetime");
-		sheet->AddCategory("rotation_timeline_map");
+	//	// ROTATION
+	//	sheet->AddCategory("initial_rotation");
+	//	sheet->AddCategory("add_rotation_per_lifetime");
+	//	sheet->AddCategory("rotation_timeline_map");
 
-		// POSITION
-		sheet->AddCategory("initial_position");
-		sheet->AddCategory("initial_velocity");
-		sheet->AddCategory("accelation_per_lifetime");
-		sheet->AddCategory("velocity_timeline_map");
+	//	// POSITION
+	//	sheet->AddCategory("initial_position");
+	//	sheet->AddCategory("initial_velocity");
+	//	sheet->AddCategory("accelation_per_lifetime");
+	//	sheet->AddCategory("velocity_timeline_map");
 
-		// GRAVITY
-		sheet->AddCategory("gravity_on_off");
+	//	// GRAVITY
+	//	sheet->AddCategory("gravity_on_off");
 
-		sheet->AddCategory("vs_id");
-		sheet->AddCategory("geo_id");
-		sheet->AddCategory("mat_id");
+	//	sheet->AddCategory("vs_id");
+	//	sheet->AddCategory("geo_id");
+	//	sheet->AddCategory("mat_id");
 
-		sheet->AddCategory("BS");
-		sheet->AddCategory("DS");
+	//	sheet->AddCategory("BS");
+	//	sheet->AddCategory("DS");
 
-		// 값 추가
+	//	// 값 추가
 
-		// type
-		effect->SetValue("type", to_string(EMITTER));
+	//	// type
+	//	effect->SetValue("type", to_string(EMITTER));
 
-		// sprite_id
-		effect->SetValue("sprite_id", emitter->sprite_id);
+	//	// sprite_id
+	//	effect->SetValue("sprite_id", emitter->sprite_id);
 
-		// emit_type
-		effect->SetValue("emit_type", to_string(emitter->emit_type));
-		// emit_once
-		effect->SetValue("emit_once", to_string(emitter->emit_once));
-		// emit_per_second
-		effect->SetValue("emit_per_second", to_string(emitter->emit_per_second));
-		// emit_time
-		effect->SetValue("emit_time", to_string(emitter->emit_time));
+	//	// emit_type
+	//	effect->SetValue("emit_type", to_string(emitter->emit_type));
+	//	// emit_once
+	//	effect->SetValue("emit_once", to_string(emitter->emit_once));
+	//	// emit_per_second
+	//	effect->SetValue("emit_per_second", to_string(emitter->emit_per_second));
+	//	// emit_time
+	//	effect->SetValue("emit_time", to_string(emitter->emit_time));
 
-		string fmt = "";
+	//	string fmt = "";
 
-		// life_time
-		fmt = to_string(emitter->life_time[0]) + " " + to_string(emitter->life_time[1]);
-		effect->SetValue("life_time", fmt);
+	//	// life_time
+	//	fmt = to_string(emitter->life_time[0]) + " " + to_string(emitter->life_time[1]);
+	//	effect->SetValue("life_time", fmt);
 
-		// Setting Types
-		effect->SetValue("color_setting_type", to_string(emitter->color_setting_type));
-		effect->SetValue("size_setting_type", to_string(emitter->size_setting_type));
-		effect->SetValue("rotation_setting_type", to_string(emitter->rotation_setting_type));
-		effect->SetValue("position_setting_type", to_string(emitter->position_setting_type));
+	//	// Setting Types
+	//	effect->SetValue("color_setting_type", to_string(emitter->color_setting_type));
+	//	effect->SetValue("size_setting_type", to_string(emitter->size_setting_type));
+	//	effect->SetValue("rotation_setting_type", to_string(emitter->rotation_setting_type));
+	//	effect->SetValue("position_setting_type", to_string(emitter->position_setting_type));
 
-		// COLOR
-		{
-			// initial_color
-			fmt = to_string(emitter->initial_color.x) + " " + to_string(emitter->initial_color.y) + " " + to_string(emitter->initial_color.z) + " " + to_string(emitter->initial_color.w);
-			effect->SetValue("initial_color", fmt);
-			// color_timeline_map
-				// 10-x y z w~100-x y z w~
-			fmt = "";
-			for (auto& pair : emitter->color_timeline_map)
-				fmt += to_string(pair.first) + "-" + to_string(pair.second.x) + " " + to_string(pair.second.y) + " " + to_string(pair.second.z) + " " + to_string(pair.second.w) + "~";
-			effect->SetValue("color_timeline_map", fmt);
-		}
+	//	// COLOR
+	//	{
+	//		// initial_color
+	//		fmt = to_string(emitter->initial_color.x) + " " + to_string(emitter->initial_color.y) + " " + to_string(emitter->initial_color.z) + " " + to_string(emitter->initial_color.w);
+	//		effect->SetValue("initial_color", fmt);
+	//		// color_timeline_map
+	//			// 10-x y z w~100-x y z w~
+	//		fmt = "";
+	//		for (auto& pair : emitter->color_timeline_map)
+	//			fmt += to_string(pair.first) + "-" + to_string(pair.second.x) + " " + to_string(pair.second.y) + " " + to_string(pair.second.z) + " " + to_string(pair.second.w) + "~";
+	//		effect->SetValue("color_timeline_map", fmt);
+	//	}
 
-		// SIZE
-		{
-			// initial_size
-			fmt = to_string(emitter->initial_size[0].x) + " " + to_string(emitter->initial_size[0].y) + " " + to_string(emitter->initial_size[0].z) + "~"
-				+ to_string(emitter->initial_size[1].x) + " " + to_string(emitter->initial_size[1].y) + " " + to_string(emitter->initial_size[1].z);
-			effect->SetValue("initial_size", fmt);
-			// add_size_per_lifetime
-			fmt = to_string(emitter->add_size_per_lifetime[0].x) + " " + to_string(emitter->add_size_per_lifetime[0].y) + " " + to_string(emitter->add_size_per_lifetime[0].z) + "~"
-				+ to_string(emitter->add_size_per_lifetime[1].x) + " " + to_string(emitter->add_size_per_lifetime[1].y) + " " + to_string(emitter->add_size_per_lifetime[1].z);
-			effect->SetValue("add_size_per_lifetime", fmt);
-			// size_timeline_map
-				// 10-x y z~100-x y z~
-			fmt = "";
-			for (auto& pair : emitter->size_timeline_map)
-				fmt += to_string(pair.first) + "-" + to_string(pair.second.x) + " " + to_string(pair.second.y) + " " + to_string(pair.second.z) + "~";
-			effect->SetValue("size_timeline_map", fmt);
-		}
+	//	// SIZE
+	//	{
+	//		// initial_size
+	//		fmt = to_string(emitter->initial_size[0].x) + " " + to_string(emitter->initial_size[0].y) + " " + to_string(emitter->initial_size[0].z) + "~"
+	//			+ to_string(emitter->initial_size[1].x) + " " + to_string(emitter->initial_size[1].y) + " " + to_string(emitter->initial_size[1].z);
+	//		effect->SetValue("initial_size", fmt);
+	//		// add_size_per_lifetime
+	//		fmt = to_string(emitter->add_size_per_lifetime[0].x) + " " + to_string(emitter->add_size_per_lifetime[0].y) + " " + to_string(emitter->add_size_per_lifetime[0].z) + "~"
+	//			+ to_string(emitter->add_size_per_lifetime[1].x) + " " + to_string(emitter->add_size_per_lifetime[1].y) + " " + to_string(emitter->add_size_per_lifetime[1].z);
+	//		effect->SetValue("add_size_per_lifetime", fmt);
+	//		// size_timeline_map
+	//			// 10-x y z~100-x y z~
+	//		fmt = "";
+	//		for (auto& pair : emitter->size_timeline_map)
+	//			fmt += to_string(pair.first) + "-" + to_string(pair.second.x) + " " + to_string(pair.second.y) + " " + to_string(pair.second.z) + "~";
+	//		effect->SetValue("size_timeline_map", fmt);
+	//	}
 
-		// ROTATION
-		{
-			// initial_rotation
-			fmt = to_string(emitter->initial_rotation[0]) + " " + to_string(emitter->initial_rotation[1]);
-			effect->SetValue("initial_rotation", fmt);
-			// add_rotation_per_lifetime
-			fmt = to_string(emitter->add_rotation_per_lifetime[0]) + " " + to_string(emitter->add_rotation_per_lifetime[1]);
-			effect->SetValue("add_rotation_per_lifetime", fmt);
-			// rotation_timeline_map	
-				// 10-30~100-40~
-			fmt = "";
-			for (auto& pair : emitter->rotation_timeline_map)
-				fmt += to_string(pair.first) + "-" + to_string(pair.second) + "~";
-			effect->SetValue("rotation_timeline_map", fmt);
-		}
+	//	// ROTATION
+	//	{
+	//		// initial_rotation
+	//		fmt = to_string(emitter->initial_rotation[0]) + " " + to_string(emitter->initial_rotation[1]);
+	//		effect->SetValue("initial_rotation", fmt);
+	//		// add_rotation_per_lifetime
+	//		fmt = to_string(emitter->add_rotation_per_lifetime[0]) + " " + to_string(emitter->add_rotation_per_lifetime[1]);
+	//		effect->SetValue("add_rotation_per_lifetime", fmt);
+	//		// rotation_timeline_map	
+	//			// 10-30~100-40~
+	//		fmt = "";
+	//		for (auto& pair : emitter->rotation_timeline_map)
+	//			fmt += to_string(pair.first) + "-" + to_string(pair.second) + "~";
+	//		effect->SetValue("rotation_timeline_map", fmt);
+	//	}
 
-		// VELOCITY
-		{
-			// initial_position
-			fmt = to_string(emitter->initial_position[0].x) + " " + to_string(emitter->initial_position[0].y) + " " + to_string(emitter->initial_position[0].z) + "~"
-				+ to_string(emitter->initial_position[1].x) + " " + to_string(emitter->initial_position[1].y) + " " + to_string(emitter->initial_position[1].z);
-			effect->SetValue("initial_position", fmt);
-			// initial_velocity
-			fmt = to_string(emitter->initial_velocity[0].x) + " " + to_string(emitter->initial_velocity[0].y) + " " + to_string(emitter->initial_velocity[0].z) + "~"
-				+ to_string(emitter->initial_velocity[1].x) + " " + to_string(emitter->initial_velocity[1].y) + " " + to_string(emitter->initial_velocity[1].z);
-			effect->SetValue("initial_velocity", fmt);
-			// accelation_per_lifetime
-			fmt = to_string(emitter->accelation_per_lifetime[0].x) + " " + to_string(emitter->accelation_per_lifetime[0].y) + " " + to_string(emitter->accelation_per_lifetime[0].z) + "~"
-				+ to_string(emitter->accelation_per_lifetime[1].x) + " " + to_string(emitter->accelation_per_lifetime[1].y) + " " + to_string(emitter->accelation_per_lifetime[1].z);
-			effect->SetValue("accelation_per_lifetime", fmt);
-			// velocity_timeline_map
-				// 10-x y z~100-x y z~
-			fmt = "";
-			for (auto& pair : emitter->velocity_timeline_map)
-				fmt += to_string(pair.first) + "-" + to_string(pair.second.x) + " " + to_string(pair.second.y) + " " + to_string(pair.second.z) + "~";
-			effect->SetValue("velocity_timeline_map", fmt);
-		}
+	//	// VELOCITY
+	//	{
+	//		// initial_position
+	//		fmt = to_string(emitter->initial_position[0].x) + " " + to_string(emitter->initial_position[0].y) + " " + to_string(emitter->initial_position[0].z) + "~"
+	//			+ to_string(emitter->initial_position[1].x) + " " + to_string(emitter->initial_position[1].y) + " " + to_string(emitter->initial_position[1].z);
+	//		effect->SetValue("initial_position", fmt);
+	//		// initial_velocity
+	//		fmt = to_string(emitter->initial_velocity[0].x) + " " + to_string(emitter->initial_velocity[0].y) + " " + to_string(emitter->initial_velocity[0].z) + "~"
+	//			+ to_string(emitter->initial_velocity[1].x) + " " + to_string(emitter->initial_velocity[1].y) + " " + to_string(emitter->initial_velocity[1].z);
+	//		effect->SetValue("initial_velocity", fmt);
+	//		// accelation_per_lifetime
+	//		fmt = to_string(emitter->accelation_per_lifetime[0].x) + " " + to_string(emitter->accelation_per_lifetime[0].y) + " " + to_string(emitter->accelation_per_lifetime[0].z) + "~"
+	//			+ to_string(emitter->accelation_per_lifetime[1].x) + " " + to_string(emitter->accelation_per_lifetime[1].y) + " " + to_string(emitter->accelation_per_lifetime[1].z);
+	//		effect->SetValue("accelation_per_lifetime", fmt);
+	//		// velocity_timeline_map
+	//			// 10-x y z~100-x y z~
+	//		fmt = "";
+	//		for (auto& pair : emitter->velocity_timeline_map)
+	//			fmt += to_string(pair.first) + "-" + to_string(pair.second.x) + " " + to_string(pair.second.y) + " " + to_string(pair.second.z) + "~";
+	//		effect->SetValue("velocity_timeline_map", fmt);
+	//	}
 
-		// GRAVITY
-		effect->SetValue("gravity_on_off", to_string(emitter->gravity_on_off));
+	//	// GRAVITY
+	//	effect->SetValue("gravity_on_off", to_string(emitter->gravity_on_off));
 
-		// vs_id
-		effect->SetValue("vs_id", emitter->vs_id);
-		// geo_id
-		effect->SetValue("geo_id", emitter->geo_id);
-		// ps_id
-		effect->SetValue("mat_id", emitter->mat_id);
+	//	// vs_id
+	//	effect->SetValue("vs_id", emitter->vs_id);
+	//	// geo_id
+	//	effect->SetValue("geo_id", emitter->geo_id);
+	//	// ps_id
+	//	effect->SetValue("mat_id", emitter->mat_id);
 
 
-		// BS
-		effect->SetValue("BS", to_string(emitter->bs_state));
-		// DS
-		effect->SetValue("DS", to_string(emitter->ds_state));
+	//	// BS
+	//	effect->SetValue("BS", to_string(emitter->bs_state));
+	//	// DS
+	//	effect->SetValue("DS", to_string(emitter->ds_state));
 
-	}
+	//}
 	DATA->SaveSheetFile(sheetName);
-}
-
-// 타임라인 -> 배열 계산 메소드들
-void WG_EffectWindow::ComputeColorTimeline(map<int, XMFLOAT4>& timeline, XMFLOAT4* arr)
-{	
-	// 1. 전체 배열을 map의 첫 값으로 초기화
-	for (int i = 0; i < 101; i++)
-	{
-		arr[i] = timeline.begin()->second;
-	}
-
-	// map의 개수가 1개라면 메소드 종료
-	if (timeline.size() == 1)
-		return;
-
-	// 2. 이후의 값들을 보정해서 계산
-	int last_time = -1;
-	for (const auto& pair : timeline)
-	{
-		// 첫 입력이면 last_time에만 저장하고 다음 배열로
-		if (last_time == -1)
-		{
-			last_time = pair.first;
-			continue;
-		}
-
-		// 아니라면 앞의 값과 보정
-		int cur_time = pair.first;
-		int time_dif = cur_time - last_time + 1;
-
-		XMFLOAT4 value_dif_step = {
-			(timeline[cur_time].x - timeline[last_time].x) / time_dif,
-			(timeline[cur_time].y - timeline[last_time].y) / time_dif,
-			(timeline[cur_time].z - timeline[last_time].z) / time_dif,
-			(timeline[cur_time].w - timeline[last_time].w) / time_dif
-		};
-
-		for (int i = 0; i < time_dif; i++)
-		{
-			XMFLOAT4 add_value = { value_dif_step.x * i, value_dif_step.y * i, value_dif_step.z * i, value_dif_step.w * i };
-			arr[last_time + i] = {
-				timeline[last_time].x + add_value.x,
-				timeline[last_time].y + add_value.y,
-				timeline[last_time].z + add_value.z,
-				timeline[last_time].w + add_value.w };
-		}
-
-		last_time = pair.first;
-	}
-
-	// 3. 마지막 값 이후에 값들은 마지막 값으로 초기화
-	int timeline_last_time = last_time;
-	for (int i = timeline_last_time; i < EFFECT_TIMELINE_SIZE; i++)
-	{
-		arr[i] = timeline[last_time];
-	}
-}
-
-void WG_EffectWindow::ComputeSizeTimeline(map<int, XMFLOAT3>& timeline, XMFLOAT3* arr)
-{
-	// 1. 전체 배열을 map의 첫 값으로 초기화
-	for (int i = 0; i < 101; i++)
-	{
-		arr[i] = timeline.begin()->second;
-	}
-
-	// map의 개수가 1개라면 메소드 종료
-	if (timeline.size() == 1)
-		return;
-
-	// 2. 이후의 값들을 보정해서 계산
-	int last_time = -1;
-	for (const auto& pair : timeline)
-	{
-		// 첫 입력이면 last_time에만 저장하고 다음 배열로
-		if (last_time == -1)
-		{
-			last_time = pair.first;
-			continue;
-		}
-
-		// 아니라면 앞의 값과 보정
-		int cur_time = pair.first;
-		int time_dif = cur_time - last_time + 1;
-
-		XMFLOAT3 value_dif_step = {
-			(timeline[cur_time].x - timeline[last_time].x) / time_dif,
-			(timeline[cur_time].y - timeline[last_time].y) / time_dif,
-			(timeline[cur_time].z - timeline[last_time].z) / time_dif
-		};
-
-		for (int i = 0; i < time_dif; i++)
-		{
-			XMFLOAT3 add_value = { value_dif_step.x * i, value_dif_step.y * i, value_dif_step.z * i };
-			arr[last_time + i] = {
-				timeline[last_time].x + add_value.x,
-				timeline[last_time].y + add_value.y,
-				timeline[last_time].z + add_value.z
-			};
-		}
-
-		last_time = pair.first;
-	}
-
-	// 3. 마지막 값 이후에 값들은 마지막 값으로 초기화
-	int timeline_last_time = last_time;
-	for (int i = timeline_last_time; i < EFFECT_TIMELINE_SIZE; i++)
-	{
-		arr[i] = timeline[last_time];
-	}
-}
-
-void WG_EffectWindow::ComputeRotationTimeline(map<int, float>& timeline, float* arr)
-{
-	// 1. 전체 배열을 map의 첫 값으로 초기화
-	for (int i = 0; i < 101; i++)
-	{
-		arr[i] = timeline.begin()->second;
-	}
-
-	// map의 개수가 1개라면 메소드 종료
-	if (timeline.size() == 1)
-		return;
-
-	// 2. 이후의 값들을 보정해서 계산
-	int last_time = -1;
-	for (const auto& pair : timeline)
-	{
-		// 첫 입력이면 last_time에만 저장하고 다음 배열로
-		if (last_time == -1)
-		{
-			last_time = pair.first;
-			continue;
-		}
-
-		// 아니라면 앞의 값과 보정
-		int cur_time = pair.first;
-		int time_dif = cur_time - last_time + 1;
-
-		float value_dif_step = (timeline[cur_time] - timeline[last_time]) / time_dif;
-
-		for (int i = 0; i < time_dif; i++)
-		{
-			float add_value = value_dif_step * i;
-			arr[last_time + i] = timeline[last_time] + add_value;
-		}
-
-		last_time = pair.first;
-	}
-
-	// 3. 마지막 값 이후에 값들은 마지막 값으로 초기화
-	int timeline_last_time = last_time;
-	for (int i = timeline_last_time; i < EFFECT_TIMELINE_SIZE; i++)
-	{
-		arr[i] = timeline[last_time];
-	}
-}
-
-void WG_EffectWindow::ComputeVelocityTimeline(map<int, XMFLOAT3>& timeline, XMFLOAT3* arr)
-{
-	// 1. 전체 배열을 map의 첫 값으로 초기화
-	for (int i = 0; i < 101; i++)
-	{
-		arr[i] = timeline.begin()->second;
-	}
-
-	// map의 개수가 1개라면 메소드 종료
-	if (timeline.size() == 1)
-		return;
-
-	// 2. 이후의 값들을 보정해서 계산
-	int last_time = -1;
-	for (const auto& pair : timeline)
-	{
-		// 첫 입력이면 last_time에만 저장하고 다음 배열로
-		if (last_time == -1)
-		{
-			last_time = pair.first;
-			continue;
-		}
-
-		// 아니라면 앞의 값과 보정
-		int cur_time = pair.first;
-		int time_dif = cur_time - last_time + 1;
-
-		XMFLOAT3 value_dif_step = {
-			(timeline[cur_time].x - timeline[last_time].x) / time_dif,
-			(timeline[cur_time].y - timeline[last_time].y) / time_dif,
-			(timeline[cur_time].z - timeline[last_time].z) / time_dif
-		};
-
-		for (int i = 0; i < time_dif; i++)
-		{
-			XMFLOAT3 add_value = { value_dif_step.x * i, value_dif_step.y * i, value_dif_step.z * i };
-			arr[last_time + i] = {
-				timeline[last_time].x + add_value.x,
-				timeline[last_time].y + add_value.y,
-				timeline[last_time].z + add_value.z
-			};
-		}
-
-		last_time = pair.first;
-	}
-
-	// 3. 마지막 값 이후에 값들은 마지막 값으로 초기화
-	int timeline_last_time = last_time;
-	for (int i = timeline_last_time; i < EFFECT_TIMELINE_SIZE; i++)
-	{
-		arr[i] = timeline[last_time];
-	}
 }
