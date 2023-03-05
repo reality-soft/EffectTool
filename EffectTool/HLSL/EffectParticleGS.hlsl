@@ -24,14 +24,14 @@ void GS(
 		float2(1.0f, 1.0f),
 	};
 
-	int frame = max((int)(g_sprite_values.z * g_particle_values.y) - 1, 0);
+	int frame = max((int)(g_emitter_values.z * g_particle_values.y) - 1, 0);
 	
 	const float2 g_uvtexcoords[4] =
 	{
-		float2(g_sprite_values2[frame].x, g_sprite_values2[frame].y),
-		float2(g_sprite_values2[frame].z, g_sprite_values2[frame].y),
-		float2(g_sprite_values2[frame].x, g_sprite_values2[frame].w),
-		float2(g_sprite_values2[frame].z, g_sprite_values2[frame].w),
+		float2(g_emitter_values2[frame].x, g_emitter_values2[frame].y),
+		float2(g_emitter_values2[frame].z, g_emitter_values2[frame].y),
+		float2(g_emitter_values2[frame].x, g_emitter_values2[frame].w),
+		float2(g_emitter_values2[frame].z, g_emitter_values2[frame].w),
 	};
 
 	GS_OUT vertex;
@@ -41,7 +41,9 @@ void GS(
 		float4 local = mul(new_point, g_world);
 		float4 world = mul(local, g_mat_particle);
 		float4 bill = mul(world, g_billboard);
-		vertex.p = mul(bill, g_view_proj);
+		float4 view = mul(bill, g_view);
+		float4 proj = mul(view, g_proj);
+		vertex.p = proj;
 
 		vertex.c = input[0].c * g_color;
 		vertex.t = g_texcoords[i];
