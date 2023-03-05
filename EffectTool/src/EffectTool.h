@@ -16,9 +16,6 @@ namespace KGCA41B
 		CameraSystem		sys_camera_;
 		EffectSystem		sys_effect_;
 	public:
-		entt::entity		player_;
-		C_Camera			debug_camera_;
-	public:
 		WG_MainMenu			tool_window_;
 
 	public:
@@ -37,7 +34,8 @@ namespace KGCA41B
 		virtual void OnRelease();
 
 	public:
-		void AddEmitter(shared_ptr<Emitter> emitter);
+		void AddEmitter(Emitter& emitter);
+		void AddEffect(map<string, Emitter>& emitter_list);
 		void ResetEmitter();
 	};
 }
