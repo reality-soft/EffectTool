@@ -3,6 +3,7 @@
 #include "SceneMgr.h"
 #include "EffectTool.h"
 #include <regex>
+#include <algorithm>
 
 using namespace KGCA41B;
 
@@ -1638,15 +1639,16 @@ void WG_EffectWindow::LoadingEffectData(string path)
 
 	auto effect = RESOURCE->UseResource<Effect>(name);
 
-	if (!effect)
+	if (effect == nullptr)
 	{
-		regex_replace(path, regex("\\"), "/");
+		replace(path.begin(), path.end(), '\\', '/');
+		//regex_replace(path, regex("\\"), "/");
 		if (!RESOURCE->ImportEffect(path))
 			return;
 		effect = RESOURCE->UseResource<Effect>(name);
 	}
 
-	for(auto pair : effect->emitters)
+	for (auto pair : effect->emitters)
 		effect_data_.insert({ pair.first, pair.second });
 
 }
@@ -1678,7 +1680,7 @@ void WG_EffectWindow::SaveUVSprite(string name)
 		list->SetValue(to_string(i + 1), uvStr);
 	}
 		
-	DATA->SaveSheetFile(sheetName);
+	DATA->SaveSprite(sheetName);
 
 	RESOURCE->SaveSprite(name, make_shared<UVSprite>(uv_sprite_data_));
 }
@@ -1896,172 +1898,178 @@ void WG_EffectWindow::SaveEffect(string name)
 
 	auto sheet = DATA->AddNewSheet(sheetName);
 
-	//for (auto& pair : effect_data_)
-	//{
-	//	auto effect = sheet->AddItem(pair.first);
-	//	auto emitter = pair.second;
+	// 카테고리 추가
+	{
+		sheet->AddCategory("type");
 
-	//	// 카테고리 추가
-	//	sheet->AddCategory("type");
+		sheet->AddCategory("sprite_id");
 
-	//	sheet->AddCategory("sprite_id");
+		sheet->AddCategory("emit_type");
+		sheet->AddCategory("emit_per_second");
+		sheet->AddCategory("emit_once");
+		sheet->AddCategory("emit_time");
 
-	//	sheet->AddCategory("emit_type");
-	//	sheet->AddCategory("emit_per_second");
-	//	sheet->AddCategory("emit_once");
-	//	sheet->AddCategory("emit_time");
+		sheet->AddCategory("life_time");
 
-	//	sheet->AddCategory("life_time");
+		sheet->AddCategory("color_setting_type");
+		sheet->AddCategory("size_setting_type");
+		sheet->AddCategory("rotation_setting_type");
+		sheet->AddCategory("position_setting_type");
 
-	//	sheet->AddCategory("color_setting_type");
-	//	sheet->AddCategory("size_setting_type");
-	//	sheet->AddCategory("rotation_setting_type");
-	//	sheet->AddCategory("position_setting_type");
+		// COLOR
+		sheet->AddCategory("initial_color");
+		sheet->AddCategory("color_timeline_map");
 
-	//	// COLOR
-	//	sheet->AddCategory("initial_color");
-	//	sheet->AddCategory("color_timeline_map");
+		// SIZE
+		sheet->AddCategory("initial_size");
+		sheet->AddCategory("add_size_per_lifetime");
+		sheet->AddCategory("size_timeline_map");
 
-	//	// SIZE
-	//	sheet->AddCategory("initial_size");
-	//	sheet->AddCategory("add_size_per_lifetime");
-	//	sheet->AddCategory("size_timeline_map");
+		// ROTATION
+		sheet->AddCategory("initial_rotation");
+		sheet->AddCategory("add_rotation_per_lifetime");
+		sheet->AddCategory("rotation_timeline_map");
 
-	//	// ROTATION
-	//	sheet->AddCategory("initial_rotation");
-	//	sheet->AddCategory("add_rotation_per_lifetime");
-	//	sheet->AddCategory("rotation_timeline_map");
+		// POSITION
+		sheet->AddCategory("initial_position");
+		sheet->AddCategory("initial_velocity");
+		sheet->AddCategory("accelation_per_lifetime");
+		sheet->AddCategory("velocity_timeline_map");
 
-	//	// POSITION
-	//	sheet->AddCategory("initial_position");
-	//	sheet->AddCategory("initial_velocity");
-	//	sheet->AddCategory("accelation_per_lifetime");
-	//	sheet->AddCategory("velocity_timeline_map");
+		// GRAVITY
+		sheet->AddCategory("gravity_on_off");
 
-	//	// GRAVITY
-	//	sheet->AddCategory("gravity_on_off");
+		sheet->AddCategory("vs_id");
+		sheet->AddCategory("geo_id");
+		sheet->AddCategory("mat_id");
 
-	//	sheet->AddCategory("vs_id");
-	//	sheet->AddCategory("geo_id");
-	//	sheet->AddCategory("mat_id");
+		sheet->AddCategory("BS");
+		sheet->AddCategory("DS");
+	}
+	
+	for (auto& pair : effect_data_)
+	{
+		auto effect = sheet->AddItem(pair.first);
+		auto emitter = pair.second;
 
-	//	sheet->AddCategory("BS");
-	//	sheet->AddCategory("DS");
+		// 값 추가
 
-	//	// 값 추가
+		// type
+		effect->SetValue("type", to_string(EMITTER));
 
-	//	// type
-	//	effect->SetValue("type", to_string(EMITTER));
+		// sprite_id
+		effect->SetValue("sprite_id", emitter.sprite_id);
 
-	//	// sprite_id
-	//	effect->SetValue("sprite_id", emitter->sprite_id);
+		// emit_type
+		effect->SetValue("emit_type", to_string(emitter.emit_type));
+		// emit_once
+		effect->SetValue("emit_once", to_string(emitter.emit_once));
+		// emit_per_second
+		effect->SetValue("emit_per_second", to_string(emitter.emit_per_second));
+		// emit_time
+		effect->SetValue("emit_time", to_string(emitter.emit_time));
 
-	//	// emit_type
-	//	effect->SetValue("emit_type", to_string(emitter->emit_type));
-	//	// emit_once
-	//	effect->SetValue("emit_once", to_string(emitter->emit_once));
-	//	// emit_per_second
-	//	effect->SetValue("emit_per_second", to_string(emitter->emit_per_second));
-	//	// emit_time
-	//	effect->SetValue("emit_time", to_string(emitter->emit_time));
+		string fmt = "";
 
-	//	string fmt = "";
+		// life_time
+		fmt = to_string(emitter.life_time[0]) + " " + to_string(emitter.life_time[1]);
+		effect->SetValue("life_time", fmt);
 
-	//	// life_time
-	//	fmt = to_string(emitter->life_time[0]) + " " + to_string(emitter->life_time[1]);
-	//	effect->SetValue("life_time", fmt);
+		// Setting Types
+		effect->SetValue("color_setting_type", to_string(emitter.color_setting_type));
+		effect->SetValue("size_setting_type", to_string(emitter.size_setting_type));
+		effect->SetValue("rotation_setting_type", to_string(emitter.rotation_setting_type));
+		effect->SetValue("position_setting_type", to_string(emitter.position_setting_type));
 
-	//	// Setting Types
-	//	effect->SetValue("color_setting_type", to_string(emitter->color_setting_type));
-	//	effect->SetValue("size_setting_type", to_string(emitter->size_setting_type));
-	//	effect->SetValue("rotation_setting_type", to_string(emitter->rotation_setting_type));
-	//	effect->SetValue("position_setting_type", to_string(emitter->position_setting_type));
+		// COLOR
+		{
+			// initial_color
+			fmt = to_string(emitter.initial_color.x) + " " + to_string(emitter.initial_color.y) + " " + to_string(emitter.initial_color.z) + " " + to_string(emitter.initial_color.w);
+			effect->SetValue("initial_color", fmt);
+			// color_timeline_map
+				// 10-x y z w~100-x y z w~
+			fmt = "";
+			for (auto& pair : emitter.color_timeline_map)
+				fmt += to_string(pair.first) + "-" + to_string(pair.second.x) + " " + to_string(pair.second.y) + " " + to_string(pair.second.z) + " " + to_string(pair.second.w) + "~";
+			effect->SetValue("color_timeline_map", fmt);
+		}
 
-	//	// COLOR
-	//	{
-	//		// initial_color
-	//		fmt = to_string(emitter->initial_color.x) + " " + to_string(emitter->initial_color.y) + " " + to_string(emitter->initial_color.z) + " " + to_string(emitter->initial_color.w);
-	//		effect->SetValue("initial_color", fmt);
-	//		// color_timeline_map
-	//			// 10-x y z w~100-x y z w~
-	//		fmt = "";
-	//		for (auto& pair : emitter->color_timeline_map)
-	//			fmt += to_string(pair.first) + "-" + to_string(pair.second.x) + " " + to_string(pair.second.y) + " " + to_string(pair.second.z) + " " + to_string(pair.second.w) + "~";
-	//		effect->SetValue("color_timeline_map", fmt);
-	//	}
+		// SIZE
+		{
+			// initial_size
+			fmt = to_string(emitter.initial_size[0].x) + " " + to_string(emitter.initial_size[0].y) + " " + to_string(emitter.initial_size[0].z) + "~"
+				+ to_string(emitter.initial_size[1].x) + " " + to_string(emitter.initial_size[1].y) + " " + to_string(emitter.initial_size[1].z);
+			effect->SetValue("initial_size", fmt);
+			// add_size_per_lifetime
+			fmt = to_string(emitter.add_size_per_lifetime[0].x) + " " + to_string(emitter.add_size_per_lifetime[0].y) + " " + to_string(emitter.add_size_per_lifetime[0].z) + "~"
+				+ to_string(emitter.add_size_per_lifetime[1].x) + " " + to_string(emitter.add_size_per_lifetime[1].y) + " " + to_string(emitter.add_size_per_lifetime[1].z);
+			effect->SetValue("add_size_per_lifetime", fmt);
+			// size_timeline_map
+				// 10-x y z~100-x y z~
+			fmt = "";
+			for (auto& pair : emitter.size_timeline_map)
+				fmt += to_string(pair.first) + "-" + to_string(pair.second.x) + " " + to_string(pair.second.y) + " " + to_string(pair.second.z) + "~";
+			effect->SetValue("size_timeline_map", fmt);
+		}
 
-	//	// SIZE
-	//	{
-	//		// initial_size
-	//		fmt = to_string(emitter->initial_size[0].x) + " " + to_string(emitter->initial_size[0].y) + " " + to_string(emitter->initial_size[0].z) + "~"
-	//			+ to_string(emitter->initial_size[1].x) + " " + to_string(emitter->initial_size[1].y) + " " + to_string(emitter->initial_size[1].z);
-	//		effect->SetValue("initial_size", fmt);
-	//		// add_size_per_lifetime
-	//		fmt = to_string(emitter->add_size_per_lifetime[0].x) + " " + to_string(emitter->add_size_per_lifetime[0].y) + " " + to_string(emitter->add_size_per_lifetime[0].z) + "~"
-	//			+ to_string(emitter->add_size_per_lifetime[1].x) + " " + to_string(emitter->add_size_per_lifetime[1].y) + " " + to_string(emitter->add_size_per_lifetime[1].z);
-	//		effect->SetValue("add_size_per_lifetime", fmt);
-	//		// size_timeline_map
-	//			// 10-x y z~100-x y z~
-	//		fmt = "";
-	//		for (auto& pair : emitter->size_timeline_map)
-	//			fmt += to_string(pair.first) + "-" + to_string(pair.second.x) + " " + to_string(pair.second.y) + " " + to_string(pair.second.z) + "~";
-	//		effect->SetValue("size_timeline_map", fmt);
-	//	}
+		// ROTATION
+		{
+			// initial_rotation
+			fmt = to_string(emitter.initial_rotation[0]) + " " + to_string(emitter.initial_rotation[1]);
+			effect->SetValue("initial_rotation", fmt);
+			// add_rotation_per_lifetime
+			fmt = to_string(emitter.add_rotation_per_lifetime[0]) + " " + to_string(emitter.add_rotation_per_lifetime[1]);
+			effect->SetValue("add_rotation_per_lifetime", fmt);
+			// rotation_timeline_map	
+				// 10-30~100-40~
+			fmt = "";
+			for (auto& pair : emitter.rotation_timeline_map)
+				fmt += to_string(pair.first) + "-" + to_string(pair.second) + "~";
+			effect->SetValue("rotation_timeline_map", fmt);
+		}
 
-	//	// ROTATION
-	//	{
-	//		// initial_rotation
-	//		fmt = to_string(emitter->initial_rotation[0]) + " " + to_string(emitter->initial_rotation[1]);
-	//		effect->SetValue("initial_rotation", fmt);
-	//		// add_rotation_per_lifetime
-	//		fmt = to_string(emitter->add_rotation_per_lifetime[0]) + " " + to_string(emitter->add_rotation_per_lifetime[1]);
-	//		effect->SetValue("add_rotation_per_lifetime", fmt);
-	//		// rotation_timeline_map	
-	//			// 10-30~100-40~
-	//		fmt = "";
-	//		for (auto& pair : emitter->rotation_timeline_map)
-	//			fmt += to_string(pair.first) + "-" + to_string(pair.second) + "~";
-	//		effect->SetValue("rotation_timeline_map", fmt);
-	//	}
+		// VELOCITY
+		{
+			// initial_position
+			fmt = to_string(emitter.initial_position[0].x) + " " + to_string(emitter.initial_position[0].y) + " " + to_string(emitter.initial_position[0].z) + "~"
+				+ to_string(emitter.initial_position[1].x) + " " + to_string(emitter.initial_position[1].y) + " " + to_string(emitter.initial_position[1].z);
+			effect->SetValue("initial_position", fmt);
+			// initial_velocity
+			fmt = to_string(emitter.initial_velocity[0].x) + " " + to_string(emitter.initial_velocity[0].y) + " " + to_string(emitter.initial_velocity[0].z) + "~"
+				+ to_string(emitter.initial_velocity[1].x) + " " + to_string(emitter.initial_velocity[1].y) + " " + to_string(emitter.initial_velocity[1].z);
+			effect->SetValue("initial_velocity", fmt);
+			// accelation_per_lifetime
+			fmt = to_string(emitter.accelation_per_lifetime[0].x) + " " + to_string(emitter.accelation_per_lifetime[0].y) + " " + to_string(emitter.accelation_per_lifetime[0].z) + "~"
+				+ to_string(emitter.accelation_per_lifetime[1].x) + " " + to_string(emitter.accelation_per_lifetime[1].y) + " " + to_string(emitter.accelation_per_lifetime[1].z);
+			effect->SetValue("accelation_per_lifetime", fmt);
+			// velocity_timeline_map
+				// 10-x y z~100-x y z~
+			fmt = "";
+			for (auto& pair : emitter.velocity_timeline_map)
+				fmt += to_string(pair.first) + "-" + to_string(pair.second.x) + " " + to_string(pair.second.y) + " " + to_string(pair.second.z) + "~";
+			effect->SetValue("velocity_timeline_map", fmt);
+		}
 
-	//	// VELOCITY
-	//	{
-	//		// initial_position
-	//		fmt = to_string(emitter->initial_position[0].x) + " " + to_string(emitter->initial_position[0].y) + " " + to_string(emitter->initial_position[0].z) + "~"
-	//			+ to_string(emitter->initial_position[1].x) + " " + to_string(emitter->initial_position[1].y) + " " + to_string(emitter->initial_position[1].z);
-	//		effect->SetValue("initial_position", fmt);
-	//		// initial_velocity
-	//		fmt = to_string(emitter->initial_velocity[0].x) + " " + to_string(emitter->initial_velocity[0].y) + " " + to_string(emitter->initial_velocity[0].z) + "~"
-	//			+ to_string(emitter->initial_velocity[1].x) + " " + to_string(emitter->initial_velocity[1].y) + " " + to_string(emitter->initial_velocity[1].z);
-	//		effect->SetValue("initial_velocity", fmt);
-	//		// accelation_per_lifetime
-	//		fmt = to_string(emitter->accelation_per_lifetime[0].x) + " " + to_string(emitter->accelation_per_lifetime[0].y) + " " + to_string(emitter->accelation_per_lifetime[0].z) + "~"
-	//			+ to_string(emitter->accelation_per_lifetime[1].x) + " " + to_string(emitter->accelation_per_lifetime[1].y) + " " + to_string(emitter->accelation_per_lifetime[1].z);
-	//		effect->SetValue("accelation_per_lifetime", fmt);
-	//		// velocity_timeline_map
-	//			// 10-x y z~100-x y z~
-	//		fmt = "";
-	//		for (auto& pair : emitter->velocity_timeline_map)
-	//			fmt += to_string(pair.first) + "-" + to_string(pair.second.x) + " " + to_string(pair.second.y) + " " + to_string(pair.second.z) + "~";
-	//		effect->SetValue("velocity_timeline_map", fmt);
-	//	}
+		// GRAVITY
+		effect->SetValue("gravity_on_off", to_string(emitter.gravity_on_off));
 
-	//	// GRAVITY
-	//	effect->SetValue("gravity_on_off", to_string(emitter->gravity_on_off));
-
-	//	// vs_id
-	//	effect->SetValue("vs_id", emitter->vs_id);
-	//	// geo_id
-	//	effect->SetValue("geo_id", emitter->geo_id);
-	//	// ps_id
-	//	effect->SetValue("mat_id", emitter->mat_id);
+		// vs_id
+		effect->SetValue("vs_id", emitter.vs_id);
+		// geo_id
+		effect->SetValue("geo_id", emitter.geo_id);
+		// ps_id
+		effect->SetValue("mat_id", emitter.mat_id);
 
 
-	//	// BS
-	//	effect->SetValue("BS", to_string(emitter->bs_state));
-	//	// DS
-	//	effect->SetValue("DS", to_string(emitter->ds_state));
+		// BS
+		effect->SetValue("BS", to_string(emitter.bs_state));
+		// DS
+		effect->SetValue("DS", to_string(emitter.ds_state));
+	}
 
-	//}
-	DATA->SaveSheetFile(sheetName);
+	DATA->SaveEffect(sheetName);
+
+	Effect eff_data;
+	eff_data.emitters = effect_data_;
+	RESOURCE->SaveEffect(name, eff_data);
 }
