@@ -17,7 +17,7 @@ void StageActor::OnInit(entt::registry& registry, reality::AABBShape collision_b
 
 	// 박스 컴포넌트 추가
 	C_BoxShape& box_comp = registry.emplace<C_BoxShape>(entity_id_, C_BoxShape());
-	box_comp.local = XMMatrixMultiply(XMMatrixIdentity(), XMMatrixRotationX(-90.0f));
+	box_comp.local = XMMatrixMultiply(XMMatrixIdentity(), XMMatrixRotationX(XMConvertToRadians(-90.0f)));
 	box_comp.vs_id = "DefaultShapeVS.cso";
 	box_comp.material_id = "box_material.mat";
 
