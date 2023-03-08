@@ -18,6 +18,8 @@ cbuffer cb_billboard : register(b0)
 	float4x4 g_view;
 	float4x4 g_proj;
 	float4x4 g_billboard;
+	float4x4 g_x_billboard;
+	float4x4 g_y_billboard;
 }
 
 cbuffer cb_effect : register(b1)

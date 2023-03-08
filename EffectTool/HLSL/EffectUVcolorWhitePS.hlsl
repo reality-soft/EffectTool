@@ -5,12 +5,12 @@ float4 PS(PS_IN input) : SV_Target
 	// Tex
 	float4 tex_color = g_txOpacity.Sample(g_SampleWrap, input.uv);
 
-	float alpha = max(max(tex_color.r, tex_color.g), tex_color.b);
+	float mask = min(min(tex_color.r, tex_color.g), tex_color.b);
 
-	if (alpha < 0.3f)
+	if (mask > 0.9f)
 	{
 		discard;
 	}
 
-	return float4(tex_color.rgb * input.c.rgb, alpha * input.c.a);
+	return float4(tex_color.rgb * input.c.rgb, (1 - mask) * input.c.a);
 }
