@@ -480,6 +480,18 @@ void WG_EffectWindow::EmitterBoard(Emitter& emitter)
 					emitter.color_timeline_map[color_lifetime] = color_to_add;
 					RESOURCE->ComputeColorTimeline(emitter.color_timeline_map, emitter.color_timeline);
 				}
+				// Delete BUTTON
+				if (ImGui::Button("Delete Color from Timeline"))
+				{
+					emitter.color_timeline_map.erase(color_lifetime);
+					RESOURCE->ComputeColorTimeline(emitter.color_timeline_map, emitter.color_timeline);
+				}
+				// Reset Button
+				if (ImGui::Button("Reset Color Timeline"))
+				{
+					emitter.color_timeline_map.clear();
+					ZeroMemory(emitter.color_timeline, sizeof(XMFLOAT4)* EFFECT_TIMELINE_SIZE);
+				}
 			}
 			break;
 			}
@@ -568,6 +580,18 @@ void WG_EffectWindow::EmitterBoard(Emitter& emitter)
 					emitter.size_timeline_map[size_lifetime] = size_to_add;
 					RESOURCE->ComputeSizeTimeline(emitter.size_timeline_map, emitter.size_timeline);
 				}
+				// Delete BUTTON
+				if (ImGui::Button("Delete Size from Timeline"))
+				{
+					emitter.size_timeline_map.erase(size_lifetime);
+					RESOURCE->ComputeSizeTimeline(emitter.size_timeline_map, emitter.size_timeline);
+				}
+				// Reset Button
+				if (ImGui::Button("Reset Size Timeline"))
+				{
+					emitter.size_timeline_map.clear();
+					ZeroMemory(emitter.size_timeline, sizeof(XMFLOAT3) * EFFECT_TIMELINE_SIZE);
+				}
 			}
 			break;
 			}
@@ -595,31 +619,31 @@ void WG_EffectWindow::EmitterBoard(Emitter& emitter)
 				rot_mode = SET_PER_LIFETIME;
 				emitter.rotation_setting_type = SET_PER_LIFETIME;
 			}
-
+			
 			switch (rot_mode)
 			{
 			case INITIAL_SET:
 				// Initial Rotation
-				ImGui::Text("Initial Rotation (angle)");
-				ImGui::SetNextItemWidth(50.0f);
-				ImGui::InputFloat("Rot Min", &emitter.initial_rotation[MIN]);
-				ImGui::SetNextItemWidth(50.0f);
-				ImGui::InputFloat("Rot Max", &emitter.initial_rotation[MAX]);
+				ImGui::Text("Initial Rotation (Angle)(x,y,z)");
+				ImGui::SetNextItemWidth(150.0f);
+				ImGui::InputFloat3("Rot Min", (float*)&emitter.initial_rotation[MIN], "%.2f");
+				ImGui::SetNextItemWidth(150.0f);
+				ImGui::InputFloat3("Rot Max", (float*)&emitter.initial_rotation[MAX], "%.2f");
 				break;
 			case ADD_PER_LIFETIME:
 				// Initial Rotation
-				ImGui::Text("Initial Rotation (angle)");
-				ImGui::SetNextItemWidth(50.0f);
-				ImGui::InputFloat("Rot Min", &emitter.initial_rotation[MIN]);
-				ImGui::SetNextItemWidth(50.0f);
-				ImGui::InputFloat("Rot Max", &emitter.initial_rotation[MAX]);
+				ImGui::Text("Initial Rotation (Angle)(x,y,z)");
+				ImGui::SetNextItemWidth(150.0f);
+				ImGui::InputFloat3("Rot Min", (float*)&emitter.initial_rotation[MIN], "%.2f");
+				ImGui::SetNextItemWidth(150.0f);
+				ImGui::InputFloat3("Rot Max", (float*)&emitter.initial_rotation[MAX], "%.2f");
 
 				// Rotation Per lifetime
-				ImGui::Text("Rotation Per lifetime (Angle)");
-				ImGui::SetNextItemWidth(50.0f);
-				ImGui::InputFloat("Rot per life Min", &emitter.add_rotation_per_lifetime[MIN]);
-				ImGui::SetNextItemWidth(50.0f);
-				ImGui::InputFloat("Rot per life Max", &emitter.add_rotation_per_lifetime[MAX]);
+				ImGui::Text("Rotation per lifetime (Angle)(x,y,z)");
+				ImGui::SetNextItemWidth(150.0f);
+				ImGui::InputFloat3("Size per Life Min", (float*)&emitter.add_rotation_per_lifetime[MIN], "%.2f");
+				ImGui::SetNextItemWidth(150.0f);
+				ImGui::InputFloat3("Size per Life Max", (float*)&emitter.add_rotation_per_lifetime[MAX], "%.2f");
 				break;
 			case SET_PER_LIFETIME:
 				// VIEW
@@ -628,8 +652,18 @@ void WG_EffectWindow::EmitterBoard(Emitter& emitter)
 				float arr[EFFECT_TIMELINE_SIZE] = { 0, };
 				// Rot X
 				for (int i = 0; i < EFFECT_TIMELINE_SIZE; i++)
-					arr[i] = emitter.rotation_timeline[i];
-				ImGui::PlotLines("Rotation", arr, IM_ARRAYSIZE(arr));
+					arr[i] = emitter.rotation_timeline[i].x;
+				ImGui::PlotLines("Rotation X", arr, IM_ARRAYSIZE(arr));
+
+				// Rot Y
+				for (int i = 0; i < EFFECT_TIMELINE_SIZE; i++)
+					arr[i] = emitter.rotation_timeline[i].y;
+				ImGui::PlotLines("Rotation Y", arr, IM_ARRAYSIZE(arr));
+
+				// Rot Z
+				for (int i = 0; i < EFFECT_TIMELINE_SIZE; i++)
+					arr[i] = emitter.rotation_timeline[i].z;
+				ImGui::PlotLines("Rotation Z", arr, IM_ARRAYSIZE(arr));
 			}
 
 			// ADD
@@ -639,15 +673,27 @@ void WG_EffectWindow::EmitterBoard(Emitter& emitter)
 				ImGui::SetNextItemWidth(300.0f);
 				ImGui::SliderInt("Lifetime(%) (rot)", &rot_lifetime, 0, 100);
 				// Color 
-				static float rot_to_add = 0.0f;
+				static XMFLOAT3 rot_to_add = { 0.0f, 0.0f, 0.0f };
 				ImGui::SetNextItemWidth(150.0f);
-				ImGui::InputFloat("Rotation to Add", &rot_to_add, 0.0f, 0.0f, "%.2f");
+				ImGui::InputFloat3("Rotation to Add", (float*)&rot_to_add, "%.2f");
 
 				// ADD BUTTON
 				if (ImGui::Button("Add Rotation to Timeline"))
 				{
 					emitter.rotation_timeline_map[rot_lifetime] = rot_to_add;
 					RESOURCE->ComputeRotationTimeline(emitter.rotation_timeline_map, emitter.rotation_timeline);
+				}
+				// Delete BUTTON
+				if (ImGui::Button("Delete Rot from Timeline"))
+				{
+					emitter.rotation_timeline_map.erase(rot_lifetime);
+					RESOURCE->ComputeRotationTimeline(emitter.rotation_timeline_map, emitter.rotation_timeline);
+				}
+				// Reset Button
+				if (ImGui::Button("Reset Rot Timeline"))
+				{
+					emitter.rotation_timeline_map.clear();
+					ZeroMemory(emitter.rotation_timeline, sizeof(XMFLOAT3)* EFFECT_TIMELINE_SIZE);
 				}
 			}
 			break;
@@ -751,6 +797,18 @@ void WG_EffectWindow::EmitterBoard(Emitter& emitter)
 				{
 					emitter.velocity_timeline_map[vel_lifetime] = vel_to_add;
 					RESOURCE->ComputeVelocityTimeline(emitter.velocity_timeline_map, emitter.velocity_timeline);
+				}
+				// Delete BUTTON
+				if (ImGui::Button("Delete Vel from Timeline"))
+				{
+					emitter.velocity_timeline_map.erase(vel_lifetime);
+					RESOURCE->ComputeVelocityTimeline(emitter.velocity_timeline_map, emitter.velocity_timeline);
+				}
+				// Reset Button
+				if (ImGui::Button("Reset Vel Timeline"))
+				{
+					emitter.velocity_timeline_map.clear();
+					ZeroMemory(emitter.velocity_timeline, sizeof(XMFLOAT3) * EFFECT_TIMELINE_SIZE);
 				}
 			}
 			break;
@@ -918,7 +976,7 @@ void WG_EffectWindow::SelectBSOptions(E_EffectBS& bs_state)
 	//static ImGuiComboFlags flags = 0;
 	//ImGui::CheckboxFlags("ImGuiComboFlags_PopupAlignLeft", &flags, ImGuiComboFlags_PopupAlignLeft);
 
-	const char* items[] = { "DEFAULT_BS", "NO_BLEND", "ALPHA_BLEND", "DUALSOURCE_BLEND" };
+	const char* items[] = { "DEFAULT_BS", "NO_BLEND", "ALPHA_BLEND", "DUALSOURCE_BLEND", "HIGHER_RGB"};
 	static int item_current_idx = 0; // Here we store our selection data as an index.
 	item_current_idx = bs_state;
 	const char* combo_preview_value = items[item_current_idx];  // Pass in the preview value visible before opening the combo (it could be anything)
@@ -1304,309 +1362,6 @@ void WG_EffectWindow::LoadingSpriteData(string path)
 	}
 }
 
-//void WG_EffectWindow::LoadingEmitterData(string path, Emitter& emitter)
-//{
-//	auto strs1 = split(path, '\\');
-//	auto name = strs1[max((int)strs1.size() - 1, 0)];
-//	auto strs2 = split(name, '.');
-//	name = strs2[0];
-//
-//	auto sheet = DATA->LoadSheet(name);
-//
-//	if (sheet == NULL)
-//	{
-//		DATA->LoadSheetFile(path);
-//		sheet = DATA->LoadSheet(name);
-//	}
-//
-//	if (sheet == NULL)
-//		return;
-//
-//	auto effect = sheet->LoadItem(name);
-//
-//	// type
-//	emitter.type = (E_EffectType)stoi(effect->GetValue("type"));
-//
-//	// sprite_id
-//	emitter.sprite_id = effect->GetValue("sprite_id");
-//
-//	// emit_type
-//	emitter.emit_type = (E_EmitType)stoi(effect->GetValue("emit_type"));
-//	// emit_once
-//	emitter.emit_once = stoi(effect->GetValue("emit_once"));
-//	// emit_per_second
-//	emitter.emit_per_second = stoi(effect->GetValue("emit_per_second"));
-//	// emit_time
-//	emitter.emit_time = stof(effect->GetValue("emit_time"));
-//
-//	
-//
-//	vector<string> splited_str;
-//	vector<string> splited_str2;
-//
-//	// life_time
-//	{
-//		splited_str = split(effect->GetValue("life_time"), ' ');
-//		if (splited_str.size() < 2)
-//			return;
-//		emitter.life_time[0] = stof(splited_str[0]);
-//		emitter.life_time[1] = stof(splited_str[1]);
-//	}
-//
-//	// SettingType
-//	{
-//		emitter.color_setting_type = (E_EmitterAttributeType)stoi(effect->GetValue("color_setting_type"));
-//		emitter.size_setting_type = (E_EmitterAttributeType)stoi(effect->GetValue("size_setting_type"));
-//		emitter.rotation_setting_type = (E_EmitterAttributeType)stoi(effect->GetValue("rotation_setting_type"));
-//		emitter.position_setting_type = (E_EmitterAttributeType)stoi(effect->GetValue("position_setting_type"));
-//	}
-//
-//	// COLOR
-//	{
-//		// initial_color
-//		splited_str = split(effect->GetValue("initial_color"), ' ');
-//		if (splited_str.size() < 4)
-//			return;
-//		emitter.initial_color.x = stof(splited_str[0]);
-//		emitter.initial_color.y = stof(splited_str[1]);
-//		emitter.initial_color.z = stof(splited_str[2]);
-//		emitter.initial_color.w = stof(splited_str[3]);
-//
-//		// color_timeline_map
-//		{
-//			string str_color_map = effect->GetValue("color_timeline_map");
-//			if (str_color_map.size())
-//			{
-//				splited_str = split(str_color_map, '~');
-//				for (auto value : splited_str)
-//				{
-//					auto splited_map_value = split(value, '-');
-//
-//					if (splited_map_value.size() == 0)
-//						return;
-//					int time = stoi(splited_map_value[0]);
-//
-//					auto splited_map_xyzw = split(splited_map_value[1], ' ');
-//					XMFLOAT4 color = { stof(splited_map_xyzw[0]), stof(splited_map_xyzw[1]), stof(splited_map_xyzw[2]), stof(splited_map_xyzw[3]) };
-//
-//					emitter.color_timeline_map.insert({ time, color });
-//				}
-//				ComputeColorTimeline(emitter.color_timeline_map, emitter.color_timeline);
-//			}
-//		}
-//
-//	}
-//
-//	// SIZE
-//	{
-//		// initial_size
-//		{
-//			splited_str = split(effect->GetValue("initial_size"), '~');
-//			if (splited_str.size() < 2)
-//				return;
-//			// min
-//			splited_str2 = split(splited_str[0], ' ');
-//			if (splited_str2.size() < 3)
-//				return;
-//			emitter.initial_size[0].x = stof(splited_str2[0]);
-//			emitter.initial_size[0].y = stof(splited_str2[1]);
-//			emitter.initial_size[0].z = stof(splited_str2[2]);
-//			// max
-//			splited_str2 = split(splited_str[1], ' ');
-//			if (splited_str2.size() < 3)
-//				return;
-//			emitter.initial_size[1].x = stof(splited_str2[0]);
-//			emitter.initial_size[1].y = stof(splited_str2[1]);
-//			emitter.initial_size[1].z = stof(splited_str2[2]);
-//		}
-//		// add_size_per_lifetime
-//		{
-//			splited_str = split(effect->GetValue("add_size_per_lifetime"), '~');
-//			if (splited_str.size() < 2)
-//				return;
-//			// min
-//			splited_str2 = split(splited_str[0], ' ');
-//			if (splited_str2.size() < 3)
-//				return;
-//			emitter.add_size_per_lifetime[0].x = stof(splited_str2[0]);
-//			emitter.add_size_per_lifetime[0].y = stof(splited_str2[1]);
-//			emitter.add_size_per_lifetime[0].z = stof(splited_str2[2]);
-//			// max
-//			splited_str2 = split(splited_str[1], ' ');
-//			if (splited_str2.size() < 3)
-//				return;
-//			emitter.add_size_per_lifetime[1].x = stof(splited_str2[0]);
-//			emitter.add_size_per_lifetime[1].y = stof(splited_str2[1]);
-//			emitter.add_size_per_lifetime[1].z = stof(splited_str2[2]);
-//		}
-//		// size_timeline_map
-//		{
-//			string str_size_map = effect->GetValue("size_timeline_map");
-//			if (str_size_map.size())
-//			{
-//				splited_str = split(str_size_map, '~');
-//				for (auto value : splited_str)
-//				{
-//					auto splited_map_value = split(value, '-');
-//
-//					if (splited_map_value.size() == 0)
-//						return;
-//					int time = stoi(splited_map_value[0]);
-//
-//					auto splited_map_xyz = split(splited_map_value[1], ' ');
-//					XMFLOAT3 size = { stof(splited_map_xyz[0]), stof(splited_map_xyz[1]), stof(splited_map_xyz[2]) };
-//
-//					emitter.size_timeline_map.insert({ time, size });
-//				}
-//				ComputeSizeTimeline(emitter.size_timeline_map, emitter.size_timeline);
-//			}
-//		}
-//		
-//		
-//	}
-//	
-//	// ROTATION
-//	{
-//		// initial_rotation
-//		{
-//			splited_str = split(effect->GetValue("initial_rotation"), ' ');
-//			if (splited_str.size() < 2)
-//				return;
-//			emitter.initial_rotation[0] = stof(splited_str[0]);
-//			emitter.initial_rotation[1] = stof(splited_str[1]);
-//		}
-//		// add_rotation_per_lifetime
-//		{
-//			splited_str = split(effect->GetValue("add_rotation_per_lifetime"), ' ');
-//			if (splited_str.size() < 2)
-//				return;
-//			emitter.add_rotation_per_lifetime[0] = stof(splited_str[0]);
-//			emitter.add_rotation_per_lifetime[1] = stof(splited_str[1]);
-//		}
-//		// rotation_timeline_map
-//		{
-//			string str_rot_map = effect->GetValue("rotation_timeline_map");
-//			if (str_rot_map.size())
-//			{
-//				splited_str = split(str_rot_map, '~');
-//				for (auto value : splited_str)
-//				{
-//					auto splited_map_value = split(value, '-');
-//
-//					if (splited_map_value.size() == 0)
-//						return;
-//					int time = stoi(splited_map_value[0]);
-//
-//					auto splited_map_xyz = split(splited_map_value[1], ' ');
-//					float rotation = stof(splited_map_xyz[0]);
-//
-//					emitter.rotation_timeline_map.insert({ time, rotation });
-//				}
-//				ComputeRotationTimeline(emitter.rotation_timeline_map, emitter.rotation_timeline);
-//			}
-//		}
-//	}
-//
-//	// VELOCITY
-//	{
-//		// initial_position
-//		{
-//			splited_str = split(effect->GetValue("initial_position"), '~');
-//			if (splited_str.size() < 2)
-//				return;
-//			// min
-//			splited_str2 = split(splited_str[0], ' ');
-//			if (splited_str2.size() < 3)
-//				return;
-//			emitter.initial_position[0].x = stof(splited_str2[0]);
-//			emitter.initial_position[0].y = stof(splited_str2[1]);
-//			emitter.initial_position[0].z = stof(splited_str2[2]);
-//			// max
-//			splited_str2 = split(splited_str[1], ' ');
-//			if (splited_str2.size() < 3)
-//				return;
-//			emitter.initial_position[1].x = stof(splited_str2[0]);
-//			emitter.initial_position[1].y = stof(splited_str2[1]);
-//			emitter.initial_position[1].z = stof(splited_str2[2]);
-//		}
-//		// initial_velocity
-//		{
-//			splited_str = split(effect->GetValue("initial_velocity"), '~');
-//			if (splited_str.size() < 2)
-//				return;
-//			// min
-//			splited_str2 = split(splited_str[0], ' ');
-//			if (splited_str2.size() < 3)
-//				return;
-//			emitter.initial_velocity[0].x = stof(splited_str2[0]);
-//			emitter.initial_velocity[0].y = stof(splited_str2[1]);
-//			emitter.initial_velocity[0].z = stof(splited_str2[2]);
-//			// max
-//			splited_str2 = split(splited_str[1], ' ');
-//			if (splited_str2.size() < 3)
-//				return;
-//			emitter.initial_velocity[1].x = stof(splited_str2[0]);
-//			emitter.initial_velocity[1].y = stof(splited_str2[1]);
-//			emitter.initial_velocity[1].z = stof(splited_str2[2]);
-//		}
-//		// accelation_per_lifetime
-//		{
-//			splited_str = split(effect->GetValue("accelation_per_lifetime"), '~');
-//			if (splited_str.size() < 2)
-//				return;
-//			// min
-//			splited_str2 = split(splited_str[0], ' ');
-//			if (splited_str2.size() < 3)
-//				return;
-//			emitter.accelation_per_lifetime[0].x = stof(splited_str2[0]);
-//			emitter.accelation_per_lifetime[0].y = stof(splited_str2[1]);
-//			emitter.accelation_per_lifetime[0].z = stof(splited_str2[2]);
-//			// max
-//			splited_str2 = split(splited_str[1], ' ');
-//			if (splited_str2.size() < 3)
-//				return;
-//			emitter.accelation_per_lifetime[1].x = stof(splited_str2[0]);
-//			emitter.accelation_per_lifetime[1].y = stof(splited_str2[1]);
-//			emitter.accelation_per_lifetime[1].z = stof(splited_str2[2]);
-//		}
-//		// velocity_timeline_map
-//		{
-//			string str_vel_map = effect->GetValue("velocity_timeline_map");
-//			if (str_vel_map.size())
-//			{
-//				splited_str = split(str_vel_map, '~');
-//				for (auto value : splited_str)
-//				{
-//					auto splited_map_value = split(value, '-');
-//
-//					if (splited_map_value.size() == 0)
-//						return;
-//					int time = stoi(splited_map_value[0]);
-//
-//					auto splited_map_xyz = split(splited_map_value[1], ' ');
-//					XMFLOAT3 vel = { stof(splited_map_xyz[0]), stof(splited_map_xyz[1]), stof(splited_map_xyz[2]) };
-//
-//					emitter.velocity_timeline_map.insert({ time, vel });
-//				}
-//				ComputeVelocityTimeline(emitter.velocity_timeline_map, emitter.velocity_timeline);
-//			}
-//		}
-//	}
-//
-//	// GRAVITY
-//	emitter.gravity_on_off = stoi(effect->GetValue("gravity_on_off"));
-//
-//	// BS
-//	emitter.bs_state = (E_EffectBS)stoi(effect->GetValue("BS"));
-//
-//	// DS
-//	emitter.ds_state = (E_EffectDS)stoi(effect->GetValue("DS"));
-//
-//	emitter.vs_id = effect->GetValue("vs_id");
-//	emitter.geo_id = effect->GetValue("geo_id");
-//	emitter.mat_id = effect->GetValue("mat_id");
-//}
-
 void WG_EffectWindow::LoadingEmitterData(string path, Emitter& emitter)
 {
 	auto strs1 = split(path, '\\');
@@ -1834,16 +1589,20 @@ void WG_EffectWindow::SaveEmitter(string name)
 	// ROTATION
 	{
 		// initial_rotation
-		fmt = to_string(emitter_data_.initial_rotation[0]) + " " + to_string(emitter_data_.initial_rotation[1]);
+		fmt = to_string(emitter_data_.initial_rotation[0].x) + " " + to_string(emitter_data_.initial_rotation[0].y) + " " + to_string(emitter_data_.initial_rotation[0].z) + "~"
+			+ to_string(emitter_data_.initial_rotation[1].x) + " " + to_string(emitter_data_.initial_rotation[1].y) + " " + to_string(emitter_data_.initial_rotation[1].z);
 		effect->SetValue("initial_rotation", fmt);
+
 		// add_rotation_per_lifetime
-		fmt = to_string(emitter_data_.add_rotation_per_lifetime[0]) + " " + to_string(emitter_data_.add_rotation_per_lifetime[1]);
+		fmt = to_string(emitter_data_.add_rotation_per_lifetime[0].x) + " " + to_string(emitter_data_.add_rotation_per_lifetime[0].y) + " " + to_string(emitter_data_.add_rotation_per_lifetime[0].z) + "~"
+			+ to_string(emitter_data_.add_rotation_per_lifetime[1].x) + " " + to_string(emitter_data_.add_rotation_per_lifetime[1].y) + " " + to_string(emitter_data_.add_rotation_per_lifetime[1].z);
 		effect->SetValue("add_rotation_per_lifetime", fmt);
-		// rotation_timeline_map	
-			// 10-30~100-40~
+
+		// rotation_timeline_map
+			// 10-x y z~100-x y z~
 		fmt = "";
 		for (auto& pair : emitter_data_.rotation_timeline_map)
-			fmt += to_string(pair.first) + "-" + to_string(pair.second) + "~";
+			fmt += to_string(pair.first) + "-" + to_string(pair.second.x) + " " + to_string(pair.second.y) + " " + to_string(pair.second.z) + "~";
 		effect->SetValue("rotation_timeline_map", fmt);
 	}
 	
@@ -2015,16 +1774,20 @@ void WG_EffectWindow::SaveEffect(string name)
 		// ROTATION
 		{
 			// initial_rotation
-			fmt = to_string(emitter.initial_rotation[0]) + " " + to_string(emitter.initial_rotation[1]);
+			fmt = to_string(emitter.initial_rotation[0].x) + " " + to_string(emitter.initial_rotation[0].y) + " " + to_string(emitter.initial_rotation[0].z) + "~"
+				+ to_string(emitter.initial_rotation[1].x) + " " + to_string(emitter.initial_rotation[1].y) + " " + to_string(emitter.initial_rotation[1].z);
 			effect->SetValue("initial_rotation", fmt);
+
 			// add_rotation_per_lifetime
-			fmt = to_string(emitter.add_rotation_per_lifetime[0]) + " " + to_string(emitter.add_rotation_per_lifetime[1]);
+			fmt = to_string(emitter.add_rotation_per_lifetime[0].x) + " " + to_string(emitter.add_rotation_per_lifetime[0].y) + " " + to_string(emitter.add_rotation_per_lifetime[0].z) + "~"
+				+ to_string(emitter.add_rotation_per_lifetime[1].x) + " " + to_string(emitter.add_rotation_per_lifetime[1].y) + " " + to_string(emitter.add_rotation_per_lifetime[1].z);
 			effect->SetValue("add_rotation_per_lifetime", fmt);
-			// rotation_timeline_map	
-				// 10-30~100-40~
+
+			// rotation_timeline_map
+				// 10-x y z~100-x y z~
 			fmt = "";
 			for (auto& pair : emitter.rotation_timeline_map)
-				fmt += to_string(pair.first) + "-" + to_string(pair.second) + "~";
+				fmt += to_string(pair.first) + "-" + to_string(pair.second.x) + " " + to_string(pair.second.y) + " " + to_string(pair.second.z) + "~";
 			effect->SetValue("rotation_timeline_map", fmt);
 		}
 
