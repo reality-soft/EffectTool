@@ -22,7 +22,7 @@ void EffectTool::OnInit()
 
 	stage_.OnInit(reg_effect_tool_, {});
 
-	effect_.OnInit(reg_effect_tool_, {}, "spark_effect");
+	effect_.OnInit(reg_effect_tool_, {}, {});
 }
 
 void EffectTool::OnUpdate()
