@@ -19,24 +19,36 @@ project "EffectTool"
 
 	files
 	{
+		"premake5.lua",
 		"%{prj.name}/src/**.h",
 		"%{prj.name}/src/**.cpp",
-		"%{prj.name}/src/**.hpp",
-		"premake5.lua"
+		"%{prj.name}/HLSL/**.hlsl"
 	}
 
 	includedirs
 	{
-		"../reality_TeamProj/Engine/vendor/spdlog/include",
-		"../reality_TeamProj/Engine/src",
-		"../reality_TeamProj/Engine/src/Engine",
-		"../reality_TeamProj/Engine/src/ECS",
-		"../reality_TeamProj/Engine/src/Engine/SingletonClass",
+		"../Game-Engine/Engine/src/Actors",
+		"../Game-Engine/Engine/src/Components",
+		"../Game-Engine/Engine/src/Core",
+		"../Game-Engine/Engine/src/DataTypes",
+		"../Game-Engine/Engine/src/Headers",
+		"../Game-Engine/Engine/src/Physics",
+		"../Game-Engine/Engine/src/ResourceTypes",
+		"../Game-Engine/Engine/src/Systems",
+		"../Game-Engine/Engine/src/Tools",
+		"../Game-Engine/Engine/src/UI",
+		"../Game-Engine/Engine/src/World",
+		"../Game-Engine/Engine/src/Event",
+		"../Game-Engine/Engine/src/Scene",
+		"../Game-Engine/Engine/src/Sound",
+		"../Game-Engine/Engine/src/Input",
+		"../Game-Engine/Engine/src/Managers",
+		"../Game-Engine/Engine/src",
+		"../Game-Engine/vendor/spdlog/include",
 		"../SDK/DirectXTK/include",
 		"../SDK/FBXSDK/include",
 		"../SDK/FMOD/include",
-		"../SDK/IMGUI/include",
-		"../SDK/RP3D/include"
+		"../SDK/IMGUI/include"
 	}
 
 	libdirs
@@ -45,8 +57,7 @@ project "EffectTool"
 		"../SDK/DirectXTK/lib",
 		"../SDK/FBXSDK/lib/debug",
 		"../SDK/FMOD/lib/debug",
-		"../SDK/IMGUI/lib",
-		"../SDK/RP3D/lib/debug"
+		"../SDK/IMGUI/lib"
 	}
 
 	links
@@ -57,8 +68,7 @@ project "EffectTool"
 		"zlib-md",
 		"fmod_vc",
 		"fmodL_vc",
-		"ImGui_Win32_Dx11_D",
-		"reactphysics3d"
+		"ImGui_Win32_Dx11_D"
 	}
 
 	filter "files:**VS.hlsl"
@@ -94,8 +104,7 @@ project "EffectTool"
 
 		postbuildcommands
 		{
-			"copy \"..\\..\\output\\bin\\Debug-windows-x86_64\\EffectTool\\*.cso\" \"..\\..\\Contents\\Shader\\*.cso\"",
-			"copy \"..\\..\\output\\bin\\Release-windows-x86_64\\EffectTool\\*.cso\" \"..\\..\\Contents\\Shader\\*.cso\""
+			"copy \"..\\..\\output\\bin\\Debug-windows-x86_64\\EffectTool\\*.cso\" \"..\\..\\Contents\\Shader\\*.cso\""
 		}
 
 	filter "configurations:Debug"

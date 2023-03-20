@@ -1,6 +1,5 @@
 #pragma once
-#include "FX_BaseEffectActor.h"
-
+#include "Engine_include.h"
 namespace reality {
 
 	class StageActor : public Actor

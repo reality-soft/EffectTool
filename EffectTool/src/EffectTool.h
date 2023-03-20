@@ -1,9 +1,6 @@
 #pragma once
-#include "Engine_include.h"
-#include "Widgets.h"
 #include "EffectWidgetScene.h"
 #include "StageActor.h"
-#include "FX_Effect.h"
 
 namespace reality
 {

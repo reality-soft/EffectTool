@@ -1,6 +1,5 @@
 #include "Widgets.h"
 #include "imfilebrowser.h"
-#include "SceneMgr.h"
 #include "EffectTool.h"
 #include <regex>
 #include <algorithm>
@@ -46,7 +45,7 @@ void WG_MainMenu::Render()
 
 	ImGui::Checkbox("WireFrame", &bWireFrame);
 
-	auto scene = (EffectTool*)SCENE->LoadScene("EffectTool");
+	auto scene = (EffectTool*)SCENE_MGR->GetCurScene().lock().get();
 	scene->bWireFrame = bWireFrame;
 
 	ImGui::End();
@@ -123,7 +122,8 @@ void WG_EffectWindow::Render()
 				}
 				if (ImGui::Button("Render Emitter"))
 				{
-					auto scene = (EffectTool*)SCENE->LoadScene("EffectTool");
+					auto scene = (EffectTool*)SCENE_MGR->GetCurScene().lock().get();
+					
 					if (scene)
 						scene->AddEmitter(emitter_data_);
 				}
@@ -133,7 +133,7 @@ void WG_EffectWindow::Render()
 				}
 				if (ImGui::Button("Reset Rendering Emitter"))
 				{
-					auto scene = (EffectTool*)SCENE->LoadScene("EffectTool");
+					auto scene = (EffectTool*)SCENE_MGR->GetCurScene().lock().get();
 					if (scene)
 						scene->ResetEmitter();
 				}
@@ -484,7 +484,8 @@ void WG_EffectWindow::EmitterBoard(Emitter& emitter)
 				if (ImGui::Button("Delete Color from Timeline"))
 				{
 					emitter.color_timeline_map.erase(color_lifetime);
-					RESOURCE->ComputeColorTimeline(emitter.color_timeline_map, emitter.color_timeline);
+					if(emitter.color_timeline_map.size() > 0)
+						RESOURCE->ComputeColorTimeline(emitter.color_timeline_map, emitter.color_timeline);
 				}
 				// Reset Button
 				if (ImGui::Button("Reset Color Timeline"))
@@ -932,7 +933,7 @@ void WG_EffectWindow::EffectBoard()
 			EmitterBoard(*cur_emitter);
 			if (ImGui::Button("Emitter Render"))
 			{
-				auto scene = (EffectTool*)SCENE->LoadScene("EffectTool");
+				auto scene = (EffectTool*)SCENE_MGR->GetCurScene().lock().get();
 				if (scene)
 				{
 					scene->ResetEmitter();
@@ -958,7 +959,7 @@ void WG_EffectWindow::EffectBoard()
 		ImGui::SameLine();
 		if (ImGui::Button("Render Effect"))
 		{
-			auto scene = (EffectTool*)SCENE->LoadScene("EffectTool");
+			auto scene = (EffectTool*)SCENE_MGR->GetCurScene().lock().get();
 			if (scene)
 			{
 				scene->ResetEmitter();
