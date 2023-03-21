@@ -32,7 +32,7 @@ cbuffer cb_emitter : register(b2)
 	//int		g_sprite_type;
 	//int		g_max_frame;
 	//int		g_uv_list_size;
-	//int		padding;
+	//int		g_gravity_onoff (0:false, 1:true);
 	int4		g_emitter_values;
 	//float		g_start_u[255];
 	//float		g_start_v[255];
