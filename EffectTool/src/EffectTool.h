@@ -22,7 +22,7 @@ namespace reality
 		bool bWireFrame = false;
 
 	public:
-		FX_Effect	effect_; 
+		FX_BaseEffectActor	effect_; 
 
 	public:
 		virtual void OnInit();
