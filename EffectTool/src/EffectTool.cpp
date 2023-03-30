@@ -52,11 +52,13 @@ void EffectTool::AddEmitter(Emitter& emitter)
 	map<string, Emitter> map;
 	map.insert({ "", emitter });
 	effect_.AddEffect(map);
+	effect_.Spawn(XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f));
 }
 
 void EffectTool::AddEffect(map<string, Emitter>& emitter_list)
 {
 	effect_.AddEffect(emitter_list);
+	effect_.Spawn(XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f));
 }
 
 void EffectTool::ResetEmitter()
