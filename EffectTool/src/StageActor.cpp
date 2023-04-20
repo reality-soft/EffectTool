@@ -5,7 +5,7 @@ using namespace reality;
 
 void StageActor::OnInit(entt::registry& registry, reality::AABBShape collision_box)
 {
-	collision_box_ = collision_box;
+	//collision_box_ = collision_box;
 
 	entity_id_ = registry.create();
 
@@ -17,13 +17,18 @@ void StageActor::OnInit(entt::registry& registry, reality::AABBShape collision_b
 
 	// 박스 컴포넌트 추가
 	C_BoxShape& box_comp = registry.emplace<C_BoxShape>(entity_id_, C_BoxShape());
-	box_comp.local = XMMatrixMultiply(XMMatrixIdentity(), XMMatrixRotationX(XMConvertToRadians(-90.0f)));
+	//box_comp.local = XMMatrixMultiply(XMMatrixIdentity(), XMMatrixRotationX(XMConvertToRadians(-90.0f)));
 	box_comp.vs_id = "DefaultShapeVS.cso";
-	box_comp.material_id = "box_material.mat";
+	box_comp.material_id = "Capsule.mat";
 
 	transform_tree_.AddNodeToNode(TYPE_ID(reality::C_Transform), TYPE_ID(reality::C_BoxShape));
 
 	transform_tree_.root_node->OnUpdate(registry, entity_id_);
+
+	CreateVertexData(box_comp);
+	CreateVertexBuffer(box_comp);
+	CreateIndexData(box_comp);
+	CreateIndexBuffer(box_comp);
 }
 
 void reality::StageActor::OnUpdate(entt::registry& registry)
