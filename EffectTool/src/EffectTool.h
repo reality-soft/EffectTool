@@ -13,7 +13,7 @@ namespace reality
 		CameraSystem		sys_camera_;
 		EffectSystem		sys_effect_;
 	public:
-		WG_MainMenu			tool_window_;
+		WG_MainMenu*		tool_window_;
 
 	public:
 		StageActor			stage_;

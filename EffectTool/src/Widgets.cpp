@@ -26,9 +26,10 @@ void WG_MainMenu::Render()
 	{
 		if (ImGui::MenuItem("Effect"))
 		{
-			auto effect_tool = GUI->FindWidget("EffectTool");
+			
+			auto effect_tool = GUI->FindWidget<WG_EffectWindow>("EffectTool");
 			if (effect_tool == nullptr)
-				GUI->AddWidget("EffectTool", new WG_EffectWindow);
+				GUI->AddWidget<WG_EffectWindow>("EffectTool");
 			else
 				effect_tool->InvertOpen();
 		}

@@ -5,21 +5,21 @@ using namespace reality;
 
 void EffectTool::OnInit()
 {
-	GUI->AddWidget("MainMenu", &tool_window_);
+	GUI->AddWidget<WG_MainMenu>("MainMenu");
+	tool_window_ = GUI->FindWidget<WG_MainMenu>("MainMenu");
 	DATA->Init("../../Data");
 	RESOURCE->Init("../../Contents"); 
 
 	RENDER_TARGET->Init();
 
-
-
-	sys_camera_.OnCreate(reg_effect_tool_);
+	sys_camera_.OnCreate(reg_effect_tool_); 
 	sys_render_.OnCreate(reg_effect_tool_);
 	sys_effect_.OnCreate(reg_effect_tool_);
 
 	stage_.OnInit(reg_effect_tool_, {});
 
 	effect_.OnInit(reg_effect_tool_);
+	
 }
 
 void EffectTool::OnUpdate()
@@ -51,14 +51,14 @@ void EffectTool::AddEmitter(Emitter& emitter)
 {
 	map<string, Emitter> map;
 	map.insert({ "", emitter });
-	effect_.AddEffect(map);
 	effect_.Spawn(XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f));
+	effect_.AddEffect(map);
 }
 
 void EffectTool::AddEffect(map<string, Emitter>& emitter_list)
 {
-	effect_.AddEffect(emitter_list);
 	effect_.Spawn(XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f));
+	effect_.AddEffect(emitter_list);
 }
 
 void EffectTool::ResetEmitter()

@@ -28,6 +28,7 @@ project "EffectTool"
 	includedirs
 	{
 		"../Game-Engine/Engine/src/Actors",
+		"../Game-Engine/Engine/src/Animation",
 		"../Game-Engine/Engine/src/Components",
 		"../Game-Engine/Engine/src/Core",
 		"../Game-Engine/Engine/src/DataTypes",
@@ -44,7 +45,7 @@ project "EffectTool"
 		"../Game-Engine/Engine/src/Input",
 		"../Game-Engine/Engine/src/Managers",
 		"../Game-Engine/Engine/src",
-		"../Game-Engine/vendor/spdlog/include",
+		"../Game-Engine/Engine/vendor/spdlog/include",
 		"../SDK/DirectXTK/include",
 		"../SDK/FBXSDK/include",
 		"../SDK/FMOD/include",
