@@ -932,6 +932,24 @@ void WG_EffectWindow::EffectBoard()
 		if (cur_emitter != nullptr)
 		{
 			EmitterBoard(*cur_emitter);
+			
+			// Effect에 저장될 Emitter 이름 수정
+			static char emitter_name[255] = { 0, };
+			ImGui::SetNextItemWidth(TEXT_WIDTH);
+			ImGui::InputTextWithHint("Emitter Name", "Name", emitter_name, IM_ARRAYSIZE(emitter_name));
+			if (ImGui::Button("Modify Emitter Name"))
+			{
+				string name = emitter_vec[item_current_idx];
+				auto emitter = effect_data_.find(name)->second;
+				effect_data_.erase(name);
+				effect_data_.insert({ emitter_name, emitter });
+				emitter_vec.clear();
+				for (auto pair : effect_data_)
+				{
+					emitter_vec.push_back(pair.first);
+				}
+			}
+
 			if (ImGui::Button("Emitter Render"))
 			{
 				auto scene = (EffectTool*)SCENE_MGR->GetCurScene().lock().get();
