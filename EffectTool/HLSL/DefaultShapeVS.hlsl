@@ -11,10 +11,12 @@ struct VS_OUT
 	float2 t : TEXCOORD0;
 };
 
-cbuffer cb_camera : register(b0)
+cbuffer CbCameraInfo : register(b0)
 {
-	matrix g_matView;
-	matrix g_matProj;
+	matrix view_proj;
+	matrix camera_translation;
+	float4 camera_world;
+	float4 camera_look;
 };
 
 cbuffer cb_transform : register(b1)
@@ -29,8 +31,9 @@ VS_OUT VS(VS_IN input)
 
 	float4 vLocal = float4(input.p, 1.0f);
 	float4 vWorld = mul(vLocal, g_matWorld);
-	float4 vView = mul(vWorld, g_matView);
-	float4 vProj = mul(vView, g_matProj);
+	float4 vProj = mul(vWorld, view_proj);
+	//float4 vView = mul(vWorld, g_matView);
+	//float4 vProj = mul(vView, g_matProj);
 
 	output.p = vProj;
 	output.n = input.n;
